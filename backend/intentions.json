@@ -1,0 +1,29 @@
+{
+  "mobilier_urbain": [
+    "Nettoyage des bacs",
+    "Réfection des bacs",
+    "Installation de bacs",
+    "Peinture de mobilier",
+    "Levé de mobilier"
+  ],
+  "collecte": [
+    "Début de collecte",
+    "Fin de collecte",
+    "Collecte non effectuée"
+  ],
+  "anomalies": [
+    "Bac manquant",
+    "Camion en panne",
+    "Dépôt sauvage",
+    "Zone inaccessible"
+  ],
+  "operations_speciales": [
+    "Opération coup de poing",
+    "Nettoyage de marché",
+    "Désensablement",
+    "Désinfection",
+    "Grand nettoyage"
+  ]
+}
+
+

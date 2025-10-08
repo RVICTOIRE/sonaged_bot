@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rapport journalier - SONAGED</title>
+    <link rel="stylesheet" href="dailyNet.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h2>Nettoiement, mobilier urbain & interventions ponctuelles</h2>
+        <!-- <div class="muted">Création, nettoiement, collecte, mobilier urbain et interventions ponctuelles</div> -->
+      </div>
+    </header>
+    <div class="container">
+      <div class="grid">
+
+        <div class="card half" id="idSection">
+          <h3>Identification</h3>
+          <div class="row">
+            <div>
+              <label>Agent</label>
+              <input type="text" id="agentName" disabled />
+            </div>
+            <div>
+              <label>ID Rapport</label>
+              <input id="ridBox" disabled />
+            </div>
+          </div>
+          <div class="muted" id="createMsg"></div>
+        </div>
+
+        
+        <!-- Section 1: Création du rapport
+        <div class="card half">
+          <h3>1) Créer le rapport</h3>
+          <div class="row">
+            <div>
+              <label>Matricule (agent)</label>
+              <input type="text" id="matriculeInput" placeholder="Ex: MAT002" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="checkMatBtn">Vérifier</button>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Agent</label>
+              <input type="text" id="agentName" disabled />
+            </div>
+            <div>
+              <label>Unité/Commune</label>
+              <input type="text" id="uniteInput" placeholder="Ex: UC3 / Medina" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Date</label>
+              <input type="date" id="dateInput" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="primary" id="createBtn" disabled>Créer l'entête</button>
+            </div>
+          </div>
+          <div class="muted">ID créé: <span id="rid">—</span> <span id="createMsg"></span></div>
+        </div> -->
+
+        <!-- Section 2: Nettoiement -->
+        <div class="card half">
+          <h3>2) Nettoiement — Indicateurs</h3>
+          <div class="indicator-grid">
+            <div class="indicator-item">
+              <label>Nombre de circuits planifiés</label>
+              <select id="netPlan">
+                <option value="">Sélectionner</option>
+                <option value="Grandes artères">Grandes artères</option>
+                <option value="Voies secondaires">Voies secondaires</option>
+                <option value="Zones résidentielles">Zones résidentielles</option>
+              </select>
+            </div>
+            <div class="indicator-item">
+              <label>Nombre de circuits balayés</label>
+              <select id="netBal">
+                <option value="">Sélectionner</option>
+                <option value="Grandes artères">Grandes artères</option>
+                <option value="Voies secondaires">Voies secondaires</option>
+                <option value="Zones résidentielles">Zones résidentielles</option>
+              </select>
+            </div>
+            <div class="indicator-item">
+              <label>Kilométrage planifié</label>
+              <input type="number" step="0.01" id="netKmPlan" placeholder="0.00" />
+            </div>
+            <div class="indicator-item">
+              <label>Kilométrage balayé</label>
+              <input type="number" step="0.01" id="netKmBal" placeholder="0.00" />
+            </div>
+            <div class="indicator-item">
+              <label>Kilométrage désensablé</label>
+              <input type="number" step="0.01" id="netKmDes" placeholder="0.00" />
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="primary" id="saveNettoiementBtn">Enregistrer le nettoiement</button>
+            <span id="nettoiementMsg" class="muted"></span>
+          </div>
+        </div>
+
+        <!-- Section 3: Mobilier Urbain -->
+        <div class="card half">
+          <h3>3) Mobilier Urbain</h3>
+          <h4>PRN (Points de regroupement normalisés)</h4>
+          <div class="row">
+            <div><label>Nombre de sites</label><input type="number" id="prnSites" placeholder="0" /></div>
+            <div><label>Nombre de bacs</label><input type="number" id="prnBacs" placeholder="0" /></div>
+            <div><label>Bacs levés</label><input type="number" id="prnLeves" placeholder="0" /></div>
+            <div><label>Observations</label><input type="text" id="prnObs" placeholder="Tous levés" /></div>
+          </div>
+          
+          <h4>PP (Points propres)</h4>
+          <div class="row">
+            <div><label>Nombre de sites</label><input type="number" id="ppSites" placeholder="0" /></div>
+            <div><label>Nombre de bacs</label><input type="number" id="ppBacs" placeholder="0" /></div>
+            <div><label>Bacs levés</label><input type="number" id="ppLeves" placeholder="0" /></div>
+            <div><label>Observations</label><input type="text" id="ppObs" placeholder="Tous levés" /></div>
+          </div>
+          
+          <h4>Bacs de rue</h4>
+          <div class="row">
+            <div><label>Nombre de sites</label><input type="number" id="bacSites" placeholder="0" /></div>
+            <div><label>Nombre de bacs</label><input type="number" id="bacBacs" placeholder="0" /></div>
+            <div><label>Bacs levés</label><input type="number" id="bacLeves" placeholder="0" /></div>
+            <div><label>Observations</label><input type="text" id="bacObs" placeholder="Tous levés" /></div>
+          </div>
+          
+          <div style="margin-top:16px">
+            <button class="primary" id="saveMobilierBtn">Enregistrer Mobilier Urbain</button>
+            <span id="mobilierMsg" class="muted"></span>
+          </div>
+        </div>
+
+        <!-- Section 4: Interventions Ponctuelles -->
+        <div class="card">
+          <h3>4) Interventions Ponctuelles</h3>
+          <div class="indicator-grid">
+            <div class="indicator-item">
+              <label>Nombre d'agents mobilisés</label>
+              <input type="number" id="intAgents" placeholder="0" />
+            </div>
+            <div class="indicator-item">
+              <label>Nombre de pelles mécaniques</label>
+              <input type="number" id="intPelles" placeholder="0" />
+            </div>
+            <div class="indicator-item">
+              <label>Nombre de tasseuses</label>
+              <input type="number" id="intTasseuses" placeholder="0" />
+            </div>
+            <div class="indicator-item">
+              <label>Nombre de camions ciel ouvert</label>
+              <input type="number" id="intCamions" placeholder="0" />
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <label>Sites d'intervention (Quartiers)</label>
+            <textarea id="intSites" rows="3" placeholder="Listez les quartiers d'intervention séparés par des virgules..."></textarea>
+          </div>
+          <div style="margin-top:12px">
+            <button class="primary" id="saveInterventionsBtn">Enregistrer Interventions</button>
+            <span id="interventionsMsg" class="muted"></span>
+          </div>
+        </div>
+
+        <!-- Section 5: Photos -->
+        <div class="card">
+          <h3>5) Photos</h3>
+          <div class="photo-upload-section">
+            <div class="row">
+              <div>
+                <label>Ajouter une photo (URL ou fichier)</label>
+                <input type="text" id="photoUrl" placeholder="https://exemple.com/photo.jpg" />
+              </div>
+              <div>
+                <label>&nbsp;</label>
+                <button id="addPhotoBtn" class="primary">Ajouter la photo</button>
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Ou sélectionner un fichier</label>
+                <input type="file" id="photoFile" accept="image/*" />
+              </div>
+              <div>
+                <label>&nbsp;</label>
+                <button id="uploadPhotoBtn">Uploader le fichier</button>
+              </div>
+            </div>
+            <div id="photoMsg" class="muted"></div>
+            <div id="photoList" class="photo-list"></div>
+          </div>
+        </div>
+
+        <!-- Section 6: Récapitulatif -->
+        <div class="card">
+          <h3>6) Récapitulatif</h3>
+          <div style="display:flex; gap:8px; margin-bottom:16px">
+            <button id="refreshRecap">Rafraîchir le récapitulatif</button>
+            <!-- <button class="primary" id="finalizeBtnNet">Finaliser le rapport</button> -->
+            <a href="dailyDR.html" id="toDR" style="background:#0f766e;color:#fff;padding:10px 12px;border-radius:8px;text-decoration:none">Continuer vers Difficultés & Recommandations</a>
+            <span id="recapMsg" class="muted"></span>
+          </div>
+          <pre id="recapBox"></pre>
+        </div>
+      </div>
+    </div>
+
+    <script src="dailyNet.js"></script>
+  </body>
+</html>

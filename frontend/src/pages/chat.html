@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SONAGED - Chatbot</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f6f7f9; }
+      .app { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; height: 100vh; }
+      header { padding: 12px 16px; background: #0f766e; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+      .connection-status { font-size: 12px; opacity: 0.8; }
+      .connected { color: #10b981; }
+      .disconnected { color: #f87171; }
+      .messages { flex: 1; overflow-y: auto; padding: 16px; }
+      .msg { max-width: 75%; margin: 8px 0; padding: 10px 12px; border-radius: 12px; line-height: 1.35; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+      .me { align-self: flex-end; background: #dcfce7; }
+      .bot { align-self: flex-start; }
+      .input { display: flex; gap: 8px; padding: 12px; background: #fff; border-top: 1px solid #e5e7eb; }
+      input[type=text] { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 16px; }
+      button { background: #0f766e; color: #fff; border: none; border-radius: 10px; padding: 10px 14px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+      button:hover { background: #0d5d56; }
+      button:disabled { background: #9ca3af; cursor: not-allowed; }
+      .card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-top:8px; }
+      .small { color:#6b7280; font-size:12px; }
+      select { width: 100%; margin-top: 6px; padding: 8px; }
+      input[type=url], input[type=file] { width: 100%; margin-top: 6px; padding: 8px; }
+
+      /* Guides rapides améliorés */
+      .guides-section { padding:12px; background:#fff; border-top:1px solid #e5e7eb; }
+      .guide-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+      .guide-tab { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: #f9fafb; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+      .guide-tab.active { background: #0f766e; color: white; border-color: #0f766e; }
+      .guide-content { display: none; }
+      .guide-content.active { display: block; }
+      
+      /* Assistant guidé */
+      .guide-assistant { background: #f8fafc; border-radius: 8px; padding: 12px; }
+      .guide-step { margin-bottom: 12px; }
+      .guide-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+      .guide-buttons button { padding: 6px 12px; font-size: 14px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+      .guide-buttons button:hover { background: #e5e7eb; }
+      .guide-input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 4px; }
+
+      /* Boutons rapides existants */
+      .quick-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+      .quick-buttons button { font-size: 14px; padding: 6px 12px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+      .quick-buttons button:hover { background: #e5e7eb; }
+
+      /* Status indicators */
+      .status { padding: 8px; border-radius: 6px; margin: 8px 0; font-size: 14px; }
+      .status-success { background: #d1fae5; color: #065f46; }
+      .status-error { background: #fee2e2; color: #991b1b; }
+      .status-warning { background: #fef3c7; color: #92400e; }
+      .status-info { background: #dbeafe; color: #1e40af; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div>
+          <strong>Chatbot SONAGED</strong>
+          <div style="font-size: 12px; opacity: 0.8;">Système de gestion des activités</div>
+        </div>
+        <div id="connectionStatus" class="connection-status disconnected">
+          ● Déconnecté
+        </div>
+      </header>
+
+      <div id="chat" class="messages"></div>
+
+      <!-- Section guides améliorée -->
+      <div class="guides-section">
+        <div class="guide-tabs">
+          <div class="guide-tab active" data-tab="assistant">🤖 Assistant</div>
+          <!-- <div class="guide-tab" data-tab="quick">⚡ Rapide</div> -->
+          <div class="guide-tab" data-tab="manual">✏️ Manuel</div>
+        </div>
+
+        <!-- Assistant guidé -->
+        <div id="assistant-guide" class="guide-content active">
+          <div class="guide-assistant">
+            <div id="guide-step" class="guide-step">
+              <div style="font-weight: bold; margin-bottom: 8px;">Démarrer une nouvelle déclaration</div>
+              <div style="color: #6b7280; font-size: 14px;">L'assistant va vous poser quelques questions pour créer votre rapport</div>
+            </div>
+            <div id="guide-buttons" class="guide-buttons">
+              <button onclick="startGuidedInput()">🚀 Commencer</button>
+            </div>
+            <div id="guide-input-container" style="display: none; margin-top: 12px;">
+              <input id="guide-input" class="guide-input" placeholder="Votre réponse...">
+              <button onclick="submitGuideInput()" style="margin-top: 8px; width: 100%;">Envoyer</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Boutons rapides -->
+        <div id="quick-guide" class="guide-content">
+          <div class="quick-buttons">
+            <!-- <button type="button" class="guide" data-type="Mobilier urbain">🗑️ Mobilier urbain</button>
+            <button type="button" class="guide" data-type="Collecte">🚛 Collecte</button> -->
+            <button type="button" class="guide" data-type="Opérations spéciales">🛠️ Opérations spéciales</button>
+            <button type="button" class="guide" data-type="Anomalies">⚠️ Anomalies</button>
+            <button type="button" class="guide" data-date="today">📅 Aujourd'hui</button>
+            <button type="button" class="guide" data-date="yesterday">📅 Hier</button>
+            <button type="button" id="insertModel">📋 Modèle</button>
+          </div>
+        </div>
+
+        <!-- Mode manuel -->
+        <div id="manual-guide" class="guide-content">
+          <div style="font-size: 14px; color: #6b7280;">
+            Tapez directement votre rapport dans le format :<br>
+            <code>Situation [date] - [type] [zone] : [activités]</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="input">
+        <input id="text" type="text" placeholder="Décrivez votre situation ou utilisez l'assistant ci-dessus..."> 
+        <button id="send">Envoyer</button>
+      </div>
+    </div>
+
+    <script>
+      const chat = document.getElementById('chat');
+      const text = document.getElementById('text');
+      const send = document.getElementById('send');
+      const connectionStatus = document.getElementById('connectionStatus');
+
+      let agents = [];
+      let intentions = {}; // Chargé depuis intentions.json
+      let lastParsed = null;
+      let selectedAgentId = null;
+       let photoUrl = null;
+       let geo = { lat: null, lng: null };
+       let selectedTime = null; // HH:MM
+      let selectedAgentInfo = null;
+      let backendUrl = 'http://127.0.0.1:5000';
+
+      // Guide state
+      let guideStep = 0;
+      let guideData = {};
+
+      // Test de connexion au backend
+      async function testConnection() {
+        try {
+          const response = await fetch(`${backendUrl}/agents`);
+          if (response.ok) {
+            connectionStatus.innerHTML = '● Connecté';
+            connectionStatus.className = 'connection-status connected';
+            return true;
+          }
+        } catch (e) {
+          connectionStatus.innerHTML = '● Déconnecté';
+          connectionStatus.className = 'connection-status disconnected';
+          return false;
+        }
+      }
+
+      function addMsg(content, who='bot') {
+        const div = document.createElement('div');
+        div.className = 'msg ' + (who === 'me' ? 'me' : 'bot');
+        div.innerHTML = content;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      async function fetchJson(url, options) {
+        const res = await fetch(url, options);
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          const txt = await res.text();
+          throw new Error(`Réponse non JSON (${res.status}): ${txt.substring(0,200)}`);
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(data));
+        return data;
+      }
+
+      async function loadAgents() {
+        try {
+          const data = await fetchJson(`${backendUrl}/agents`);
+          agents = data.items || [];
+        } catch (e) {
+          console.error('Erreur chargement agents:', e);
+          addMsg('<div class="status status-error">⚠️ Impossible de charger la liste des agents</div>');
+        }
+      }
+
+      async function loadIntentions() {
+        try {
+          const response = await fetch('./intentions.json');
+          if (response.ok) {
+            intentions = await response.json();
+            console.log('Intentions chargées:', intentions);
+          } else {
+            console.warn('Fichier intentions.json non trouvé, utilisation des données par défaut');
+            // Données par défaut basées sur votre structure
+            intentions = {
+              "mobilier_urbain": [
+                "Nettoyage des bacs",
+                "Réfection des bacs", 
+                "Installation de bacs",
+                "Peinture de mobilier",
+                "Levé de mobilier"
+              ],
+              "collecte": [
+                "Début de collecte",
+                "Fin de collecte",
+                "Collecte non effectuée"
+              ],
+              "operations_speciales": [
+                "Opération coup de poing",
+                "Nettoyage de marché",
+                "Désensablement",
+                "Désinfection",
+                "Grand nettoyage"
+              ],
+              "anomalies": [
+                "Bac manquant",
+                "Camion en panne",
+                "Dépôt sauvage",
+                "Zone inaccessible"
+              ]
+            };
+          }
+        } catch (e) {
+          console.error('Erreur chargement intentions:', e);
+          // Utiliser les données par défaut en cas d'erreur
+          intentions = {
+            "mobilier_urbain": [
+              "Nettoyage des bacs",
+              "Réfection des bacs",
+              "Installation de bacs", 
+              "Peinture de mobilier",
+              "Levé de mobilier"
+            ],
+            "collecte": [
+              "Début de collecte",
+              "Fin de collecte",
+              "Collecte non effectuée"
+            ],
+            "operations_speciales": [
+              "Opération coup de poing",
+              "Nettoyage de marché",
+              "Désensablement",
+              "Désinfection",
+              "Grand nettoyage"
+            ],
+            "anomalies": [
+              "Bac manquant",
+              "Camion en panne",
+              "Dépôt sauvage", 
+              "Zone inaccessible"
+            ]
+          };
+        }
+      }
+
+      function renderParsed(parsed) {
+        const act = Array.isArray(parsed.activites) ? parsed.activites.join(', ') : '';
+        return `
+          <div class="card">
+            <div><strong>📅 Date:</strong> ${parsed.date || 'Non spécifiée'}</div>
+            <div><strong>📍 Zone:</strong> ${parsed.zone || 'Non spécifiée'}</div>
+            <div><strong>🏷️ Type d'activité:</strong> ${parsed.type_activite || 'Non spécifié'}</div>
+            <div><strong>✅ Activités:</strong> ${act || 'Non spécifiées'}</div>
+            ${parsed.commentaire ? `<div><strong>💬 Commentaire:</strong> ${parsed.commentaire}</div>` : ''}
+          </div>
+        `;
+      }
+
+       function agentSelectorHtml() {
+         // build time options every 30 minutes
+         const times = [];
+         for (let h = 0; h < 24; h++) {
+           for (let m = 0; m < 60; m += 30) {
+             const hh = String(h).padStart(2,'0');
+             const mm = String(m).padStart(2,'0');
+             times.push(`${hh}:${mm}`);
+           }
+         }
+         const timeOptions = times.map(t => `<option value="${t}">${t}</option>`).join('');
+         const parsedHour = (lastParsed && lastParsed.heure) ? lastParsed.heure.substring(0,5) : '';
+        return `
+          <div class="card">
+            <div style="font-weight: bold; margin-bottom: 8px;">🔐 Identification Agent</div>
+            <input id="matriculeInput" type="text" placeholder="Ex: whatsapp:+221770000001 ou MAT1234" style="width:100%;padding:8px;margin-top:6px;">
+            <div class="small">Le système vérifiera que votre matricule existe dans la base</div>
+            <div style="margin-top:8px">
+              <button id="verifyBtn" type="button">Vérifier</button> 
+              <span id="verifyState" class="small"></span>
+            </div>
+            
+            <hr style="margin:16px 0">
+
+             <div style="font-weight: bold; margin-bottom: 8px;">🕒 Heure du rapport (optionnel)</div>
+             <select id="timeSelect">
+               <option value="">-- Sélectionner l'heure --</option>
+               ${timeOptions}
+             </select>
+             <div class="small">Par défaut: l'heure extraite du message si présente${parsedHour ? ` (détectée: ${parsedHour})` : ''}.</div>
+             
+             <hr style="margin:16px 0">
+            
+            <div style="font-weight: bold; margin-bottom: 8px;">📸 Photo (optionnel)</div>
+            <input id="photoUrl" type="url" placeholder="URL de l'image (ex: https://...)">
+            <div class="small">ou</div>
+            <input id="photoFile" type="file" accept="image/*">
+            
+            <hr style="margin:16px 0">
+            
+            <div style="font-weight: bold; margin-bottom: 8px;">📍 Géolocalisation (optionnel)</div>
+            <button id="geoBtn" type="button">📍 Ajouter ma position</button> 
+            <span id="geoState" class="small"></span>
+            
+            <hr style="margin:16px 0">
+            
+            <button id="confirmBtn" disabled style="width: 100%; padding: 12px; font-size: 16px;">
+              💾 Enregistrer le rapport
+            </button>
+          </div>
+        `;
+      }
+
+      async function onSend() {
+        const val = text.value.trim();
+        if (!val) return;
+        
+        addMsg(val, 'me');
+        text.value = '';
+        
+        addMsg('<div class="status status-info">⏳ Analyse en cours...</div>');
+        
+        try {
+          const parsed = await fetchJson(`${backendUrl}/rapport/parse`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({text: val})
+          });
+          
+          lastParsed = parsed;
+          addMsg("✨ <strong>Analyse terminée !</strong> Voici ce que j'ai compris :");
+          addMsg(renderParsed(parsed));
+          addMsg(agentSelectorHtml());
+          
+          setupAgentSelector();
+        } catch (e) {
+          addMsg(`<div class="status status-error">❌ Erreur: ${e.message}</div>`);
+        }
+      }
+
+       function setupAgentSelector() {
+        const verifyBtn = document.getElementById('verifyBtn');
+        const verifyState = document.getElementById('verifyState');
+        const matriculeInput = document.getElementById('matriculeInput');
+        const confirmBtn = document.getElementById('confirmBtn');
+         const timeSelect = document.getElementById('timeSelect');
+        const photoUrlInput = document.getElementById('photoUrl');
+        const photoFileInput = document.getElementById('photoFile');
+        const geoBtn = document.getElementById('geoBtn');
+        const geoState = document.getElementById('geoState');
+
+         // Initialize time from parsed heure if exists
+         if (lastParsed && lastParsed.heure) {
+           const hhmm = lastParsed.heure.substring(0,5);
+           selectedTime = hhmm;
+           const opt = Array.from(timeSelect.options).find(o => o.value === hhmm);
+           if (opt) timeSelect.value = hhmm;
+         } else {
+           selectedTime = null;
+         }
+
+         timeSelect.addEventListener('change', () => {
+           selectedTime = timeSelect.value || null;
+         });
+
+        verifyBtn.addEventListener('click', async () => {
+          selectedAgentId = null;
+          confirmBtn.disabled = true;
+          const matricule = matriculeInput.value.trim();
+          
+          if (!matricule) {
+            verifyState.innerHTML = '<span style="color: #f59e0b;">⚠️ Saisissez un matricule</span>';
+            return;
+          }
+          
+          verifyState.innerHTML = '<span style="color: #3b82f6;">🔍 Vérification...</span>';
+          
+          try {
+            const res = await fetchJson(`${backendUrl}/agents?matricule=${encodeURIComponent(matricule)}`);
+            const agent = (res.items || [])[0];
+            
+            if (agent) {
+              selectedAgentId = agent.id;
+              selectedAgentInfo = agent;
+              verifyState.innerHTML = `<span style="color: #10b981;">✅ Agent trouvé: ${agent.nom}</span>`;
+              confirmBtn.disabled = false;
+            } else {
+              verifyState.innerHTML = '<span style="color: #ef4444;">❌ Matricule introuvable</span>';
+            }
+          } catch (e) {
+            verifyState.innerHTML = '<span style="color: #ef4444;">❌ Erreur de vérification</span>';
+          }
+        });
+
+        confirmBtn.addEventListener('click', onConfirm);
+
+        photoUrlInput.addEventListener('input', () => {
+          photoUrl = photoUrlInput.value || null;
+        });
+
+        photoFileInput.addEventListener('change', async () => {
+          const file = photoFileInput.files?.[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = () => {
+            photoUrl = reader.result;
+            addMsg('<div class="status status-success">📸 Photo ajoutée avec succès</div>');
+          };
+          reader.onerror = () => {
+            addMsg('<div class="status status-error">❌ Impossible de lire le fichier image</div>');
+          };
+          reader.readAsDataURL(file);
+        });
+
+        geoBtn.addEventListener('click', () => {
+          if (!navigator.geolocation) {
+            geoState.innerHTML = '<span style="color: #ef4444;">❌ Géolocalisation non disponible</span>';
+            return;
+          }
+          
+          geoState.innerHTML = '<span style="color: #3b82f6;">📍 Obtention de la position...</span>';
+          
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              geo.lat = pos.coords.latitude;
+              geo.lng = pos.coords.longitude;
+              geoState.innerHTML = `<span style="color: #10b981;">✅ Position ajoutée (${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)})</span>`;
+            },
+            (err) => {
+              geoState.innerHTML = `<span style="color: #ef4444;">❌ ${err.message}</span>`;
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+          );
+        });
+      }
+
+       async function onConfirm() {
+        if (!selectedAgentId) {
+          addMsg('<div class="status status-warning">⚠️ Veuillez vérifier votre matricule d\'agent avant d\'enregistrer</div>');
+          return;
+        }
+
+        const payload = {
+          agent_id: selectedAgentId,
+          date_rapport: lastParsed?.date || null,
+           heure_rapport: null,
+          zone: lastParsed?.zone || null,
+          type_activite: lastParsed?.type_activite || null,
+          activites: lastParsed?.activites || [],
+          commentaire: lastParsed?.commentaire || null
+        };
+
+         // Fill heure_rapport from selectedTime or parsed
+         if (selectedTime) {
+           payload.heure_rapport = selectedTime.length === 5 ? `${selectedTime}:00` : selectedTime;
+         } else if (lastParsed && lastParsed.heure) {
+           payload.heure_rapport = lastParsed.heure;
+         }
+
+        if (photoUrl) payload.photo_url = photoUrl;
+        if (geo.lat && geo.lng) {
+          payload.latitude = geo.lat;
+          payload.longitude = geo.lng;
+        }
+
+        addMsg('<div class="status status-info">💾 Enregistrement en cours...</div>');
+
+        try {
+          const res = await fetchJson(`${backendUrl}/rapport`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          addMsg(`<div class="status status-success">🎉 <strong>Rapport enregistré avec succès !</strong><br>Référence: #${res.id}</div>`);
+          
+          // Reset
+          selectedAgentId = null;
+          photoUrl = null;
+          geo = { lat: null, lng: null };
+          lastParsed = null;
+          
+        } catch (e) {
+          addMsg(`<div class="status status-error">❌ Échec de l'enregistrement: ${e.message}</div>`);
+        }
+      }
+
+      // Event listeners
+      send.addEventListener('click', onSend);
+      text.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') onSend();
+      });
+
+      // Guide tabs
+      document.querySelectorAll('.guide-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.guide-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.guide-content').forEach(c => c.classList.remove('active'));
+          
+          tab.classList.add('active');
+          document.getElementById(`${tab.dataset.tab}-guide`).classList.add('active');
+        });
+      });
+
+      // Fonctions utilitaires pour les guides
+      function pad(n) { return n.toString().padStart(2,'0'); }
+      function dateStr(d) { return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${String(d.getFullYear()).slice(-2)}`; }
+      function insertAtCursor(str) {
+        const cur = text.selectionStart ?? text.value.length;
+        const before = text.value.slice(0, cur);
+        const after = text.value.slice(cur);
+        text.value = before + str + after;
+        text.focus();
+        text.selectionStart = text.selectionEnd = (before + str).length;
+      }
+      function setModel() {
+        const today = dateStr(new Date());
+        text.value = `Situation ${today} - [Type] [Zone] : [Activités]`;
+        text.focus();
+      }
+
+      // Boutons rapides
+      document.querySelectorAll('.guide').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.type) {
+            insertAtCursor(` ${btn.dataset.type} `);
+            return;
+          }
+          if (btn.dataset.date) {
+            const now = new Date();
+            if (btn.dataset.date === 'yesterday') now.setDate(now.getDate()-1);
+            insertAtCursor(` ${dateStr(now)} `);
+            return;
+          }
+        });
+      });
+
+      document.getElementById('insertModel').addEventListener('click', setModel);
+
+      // Assistant guidé
+      const guideSteps = [
+        {
+          question: "Quelle est la date de votre activité ?",
+          placeholder: "Ex: 19/09/25 ou aujourd'hui",
+          buttons: [
+            { text: "📅 Aujourd'hui", value: dateStr(new Date()) },
+            { text: "📅 Hier", value: dateStr(new Date(Date.now() - 86400000)) }
+          ]
+        },
+        {
+          question: "Quel type d'activité avez-vous effectué ?",
+          buttons: [
+            // { text: "🗑️ Mobilier urbain", value: "mobilier_urbain" },
+            // { text: "🚛 Collecte", value: "collecte" },
+            { text: "🛠️ Opérations spéciales", value: "operations_speciales" },
+            { text: "⚠️ Anomalies", value: "anomalies" }
+          ]
+        },
+        {
+          question: "Quelles activités avez-vous réalisées ?",
+          placeholder: "Ex: Installation de 5 poubelles, collecte de 2 tonnes de déchets...",
+          type: "activities"
+        },
+        {
+          question: "Dans quelle zone avez-vous travaillé ?",
+          placeholder: "Ex: Dakar Centre, Kaolack, Thiès...",
+          type: "zone"
+        },
+        // {
+        //   question: "À quelle heure avez-vous terminé ? (optionnel)",
+        //   placeholder: "Ex: 08:00, 14:30...",
+        //   type: "time",
+        //   optional: true
+        // }
+      ];
+
+      function startGuidedInput() {
+        guideStep = 0;
+        guideData = {};
+        showGuideStep();
+      }
+
+      function showGuideStep() {
+        if (guideStep >= guideSteps.length) {
+          finishGuide();
+          return;
+        }
+
+        const step = guideSteps[guideStep];
+        const guideStepDiv = document.getElementById('guide-step');
+        const guideButtonsDiv = document.getElementById('guide-buttons');
+        const guideInputContainer = document.getElementById('guide-input-container');
+        const guideInput = document.getElementById('guide-input');
+
+        guideStepDiv.innerHTML = `
+          <div style="font-weight: bold; margin-bottom: 8px;">Étape ${guideStep + 1}/${guideSteps.length}</div>
+          <div style="color: #374151;">${step.question}</div>
+          ${step.optional ? '<div style="color: #6b7280; font-size: 12px;">Cette étape est optionnelle</div>' : ''}
+        `;
+
+        guideButtonsDiv.innerHTML = '';
+        
+        // Si c'est l'étape des activités et qu'on a choisi un type
+        if (step.type === 'activities' && guideData.type) {
+          const typeKey = guideData.type.toLowerCase().replace(' ', '_');
+          const availableActivities = intentions[typeKey] || [];
+          
+          if (availableActivities.length > 0) {
+            guideStepDiv.innerHTML += `
+              <div style="color: #6b7280; font-size: 14px; margin-top: 8px;">
+                Sélectionnez une activité pour <strong>${getDisplayType(guideData.type)}</strong> :
+              </div>
+            `;
+            
+            // Créer des boutons pour chaque activité disponible
+            availableActivities.forEach(activity => {
+              const button = document.createElement('button');
+              button.textContent = `✓ ${activity}`;
+              button.style.width = '100%';
+              button.style.marginBottom = '4px';
+              button.style.textAlign = 'left';
+              button.onclick = () => submitGuideValue(activity);
+              guideButtonsDiv.appendChild(button);
+            });
+            
+            // Ajouter un bouton pour saisie personnalisée
+            const customButton = document.createElement('button');
+            customButton.textContent = '✏️ Saisie personnalisée';
+            customButton.style.background = '#f3f4f6';
+            customButton.style.color = '#374151';
+            customButton.onclick = () => {
+              guideInputContainer.style.display = 'block';
+              guideInput.focus();
+            };
+            guideButtonsDiv.appendChild(customButton);
+            
+            guideInputContainer.style.display = 'none';
+          } else {
+            // Pas d'activités prédéfinies, utiliser la saisie libre
+            guideInputContainer.style.display = 'block';
+            guideInput.focus();
+          }
+        } else if (step.type === 'time') {
+          // Étape heure avec bouton "Ignorer"
+          const skipButton = document.createElement('button');
+          skipButton.textContent = '⏭️ Ignorer cette étape';
+          skipButton.style.background = '#f3f4f6';
+          skipButton.style.color = '#374151';
+          skipButton.onclick = () => {
+            guideStep++;
+            showGuideStep();
+          };
+          guideButtonsDiv.appendChild(skipButton);
+          
+          guideInput.placeholder = step.placeholder || 'Votre réponse...';
+          guideInput.value = '';
+          guideInputContainer.style.display = 'block';
+          guideInput.focus();
+        } else {
+          // Étapes normales avec boutons prédéfinis
+          if (step.buttons) {
+            step.buttons.forEach(btn => {
+              const button = document.createElement('button');
+              button.textContent = btn.text;
+              button.onclick = () => submitGuideValue(btn.value);
+              guideButtonsDiv.appendChild(button);
+            });
+          }
+
+          guideInput.placeholder = step.placeholder || 'Votre réponse...';
+          guideInput.value = '';
+          guideInputContainer.style.display = 'block';
+          guideInput.focus();
+        }
+      }
+
+      function getDisplayType(typeKey) {
+        const typeDisplay = {
+          'mobilier_urbain': 'Mobilier urbain',
+          'collecte': 'Collecte',
+          'operations_speciales': 'Opérations spéciales',
+          'anomalies': 'Anomalies'
+        };
+        return typeDisplay[typeKey] || typeKey;
+      }
+
+      function submitGuideInput() {
+        const value = document.getElementById('guide-input').value.trim();
+        if (value) {
+          submitGuideValue(value);
+        }
+      }
+
+      function submitGuideValue(value) {
+        const stepNames = ['date', 'type', 'activites', 'zone', 'heure']; 
+        guideData[stepNames[guideStep]] = value;
+        guideStep++;
+        showGuideStep();
+      }
+
+      function finishGuide() {
+        // Construire le rapport dans le bon format
+        const displayType = getDisplayType(guideData.type);
+        
+        // Format correct : Situation [date] - [type] [zone] : [activités]
+        // Si il y a une heure, l'ajouter à la fin des activités
+        let activites = guideData.activites;
+        if (guideData.heure) {
+          activites += ` (${guideData.heure})`;
+        }
+        
+        const rapport = `Situation ${guideData.date} - ${displayType} ${guideData.zone} : ${activites}`;
+        text.value = rapport;
+        
+        document.getElementById('guide-step').innerHTML = `
+          <div style="font-weight: bold; color: #10b981; margin-bottom: 8px;">✅ Rapport généré !</div>
+          <div style="color: #374151; font-size: 14px;">Le rapport a été placé dans le champ de saisie. Vérifiez le format avant d'envoyer.</div>
+          <div style="background: #f3f4f6; padding: 8px; border-radius: 6px; margin-top: 8px; font-family: monospace; font-size: 13px;">
+            ${rapport}
+          </div>
+          <div style="color: #6b7280; font-size: 12px; margin-top: 8px;">
+            Format attendu : Situation [date] - [type] [zone] : [activités]
+          </div>
+        `;
+        
+        document.getElementById('guide-buttons').innerHTML = `
+          <button onclick="send.click()" style="background: #10b981;">📤 Envoyer maintenant</button>
+          <button onclick="startGuidedInput()">🔄 Recommencer</button>
+          <button onclick="editReport()" style="background: #f59e0b;">✏️ Modifier</button>
+        `;
+        
+        document.getElementById('guide-input-container').style.display = 'none';
+        text.focus();
+      }
+
+      function editReport() {
+        text.focus();
+        text.select();
+      }
+
+      // Initialisation
+      testConnection().then(connected => {
+        if (connected) {
+          loadAgents();
+          loadIntentions(); // Charger aussi les intentions
+          addMsg('🤖 <strong>Bienvenue sur SONAGED !</strong><br>Je suis prêt à vous aider.<br>Utilisez l\'assistant guidé ou tapez directement votre rapport.');
+        } else {
+          addMsg('<div class="status status-error">❌ <strong>Connexion impossible au serveur</strong><br>Vérifiez que votre backend Flask est démarré sur http://127.0.0.1:5000</div>');
+          // Charger quand même les intentions en mode offline
+          loadIntentions();
+        }
+      });
+
+      // Test de connexion périodique
+      setInterval(testConnection, 30000);
+    </script>
+  </body>
+</html>

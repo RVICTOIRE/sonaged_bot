@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Navigation - SONAGED</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        button { padding: 10px 15px; margin: 5px; background: #0f766e; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0d5e57; }
+        .status { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Test Navigation entre les pages du rapport journalier</h1>
+    
+    <div class="test-section">
+        <h3>1. Simuler la création d'un rapport</h3>
+        <button onclick="simulateCreateReport()">Créer un rapport de test</button>
+        <div id="createStatus" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Tester la navigation</h3>
+        <button onclick="goToDaily()">Page 1: Daily (Collecte)</button>
+        <button onclick="goToDailyNet()">Page 2: DailyNet (Nettoiement)</button>
+        <button onclick="goToDailyDR()">Page 3: DailyDR (Difficultés)</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Vérifier le localStorage</h3>
+        <button onclick="checkLocalStorage()">Vérifier les données</button>
+        <div id="storageStatus" class="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Nettoyer les données</h3>
+        <button onclick="clearLocalStorage()">Effacer le localStorage</button>
+    </div>
+
+    <script>
+        function simulateCreateReport() {
+            // Simuler la création d'un rapport
+            localStorage.setItem('dailyReportId', '123');
+            localStorage.setItem('agentId', '456');
+            localStorage.setItem('agentName', 'Moussa Diallo');
+            
+            document.getElementById('createStatus').innerHTML = 
+                '✅ Rapport créé:<br>' +
+                'ID: 123<br>' +
+                'Agent: Moussa Diallo<br>' +
+                'Agent ID: 456';
+        }
+        
+        function goToDaily() {
+            window.open('daily.html', '_blank');
+        }
+        
+        function goToDailyNet() {
+            window.open('dailyNet.html', '_blank');
+        }
+        
+        function goToDailyDR() {
+            window.open('dailyDR.html', '_blank');
+        }
+        
+        function checkLocalStorage() {
+            const reportId = localStorage.getItem('dailyReportId');
+            const agentId = localStorage.getItem('agentId');
+            const agentName = localStorage.getItem('agentName');
+            
+            document.getElementById('storageStatus').innerHTML = 
+                '📊 Données dans localStorage:<br>' +
+                `dailyReportId: ${reportId || 'Non défini'}<br>` +
+                `agentId: ${agentId || 'Non défini'}<br>` +
+                `agentName: ${agentName || 'Non défini'}`;
+        }
+        
+        function clearLocalStorage() {
+            localStorage.removeItem('dailyReportId');
+            localStorage.removeItem('agentId');
+            localStorage.removeItem('agentName');
+            document.getElementById('storageStatus').innerHTML = '🧹 localStorage nettoyé';
+        }
+        
+        // Vérifier au chargement
+        window.onload = function() {
+            checkLocalStorage();
+        };
+    </script>
+</body>
+</html>

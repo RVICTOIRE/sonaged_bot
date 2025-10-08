@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard journalier — SONAGED</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+      body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin:0; background:#f6f7f9; }
+      header { background:#0f766e; color:#fff; padding:16px; }
+      .container { max-width: 1100px; margin:0 auto; padding:16px; }
+      .filters { display:flex; flex-wrap:wrap; gap:12px; align-items:end; background:#fff; padding:12px; border:1px solid #e5e7eb; border-radius:8px; }
+      label { font-size:12px; color:#374151; display:block; margin-bottom:4px; }
+      input, select, button { padding:8px 10px; border:1px solid #d1d5db; border-radius:6px; background:#fff; }
+      button.primary { background:#0f766e; color:#fff; border:none; }
+      .kpis { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top:16px; }
+      .kpi { background:#0f766e; color:#fff; border-radius:8px; padding:12px; }
+      .kpi h3 { margin:0; font-size:14px; opacity:0.9; }
+      .kpi .val { font-size:22px; font-weight:700; margin-top:6px; }
+      .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; margin-top:16px; }
+      .card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; grid-column: span 6; }
+      table { width:100%; border-collapse:collapse; }
+      th, td { border:1px solid #e5e7eb; padding:8px; text-align:left; font-size:14px; }
+      th { background:#f3f4f6; }
+      .muted { color:#6b7280; font-size:12px; }
+      .charts { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; margin-top:16px; }
+      .chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; grid-column: span 6; }
+      #mapAnom { width: 100%; height: 340px; border-radius:8px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h2>Dashboard journalier — SONAGED</h2>
+        <div class="primary">Synthèse par Date et Unité/Commune (source: /dashboard/summary)</div>
+      </div>
+    </header>
+    <div class="container">
+      <div class="filters">
+        <div>
+          <label for="dateFrom">Date début</label>
+          <input type="date" id="dateFrom" />
+        </div>
+        <div>
+          <label for="dateTo">Date fin</label>
+          <input type="date" id="dateTo" />
+        </div>
+        <div>
+          <label for="uniteInput">Unité/Commune</label>
+          <input id="uniteInput" placeholder="Ex: Medina" />
+        </div>
+        <div>
+          <label for="agentSelect">Agent</label>
+          <select id="agentSelect"><option value="">Tous</option></select>
+        </div>
+        <div>
+          <label for="statusSelect">Statut</label>
+          <select id="statusSelect">
+            <option value="">Tous</option>
+            <option value="finalise">Finalisé</option>
+            <option value="complet">Complet</option>
+            <option value="partiel">Partiel</option>
+            <option value="brouillon">Brouillon</option>
+          </select>
+        </div>
+        <div>
+          <button class="primary" id="applyBtn">Charger</button>
+        </div>
+        <div class="muted" id="msg"></div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><h3>Total rapports</h3><div class="val" id="kpiTotal">0</div></div>
+        <div class="kpi"><h3>% complétion moyen</h3><div class="val" id="kpiCompletion">0%</div></div>
+        <div class="kpi"><h3>Finalisés</h3><div class="val" id="kpiFinalises">0</div></div>
+        <div class="kpi"><h3>À compléter</h3><div class="val" id="kpiIncomplets">0</div></div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Collecte</h3>
+          <div class="muted">Planifiés / Collectés — Tonnage</div>
+          <div style="font-size:18px; margin:8px 0"><span id="colPlan">0</span> / <span id="colColl">0</span> — <span id="colTonnage">0</span> t</div>
+          <canvas id="chartCollecte" height="120"></canvas>
+          <table>
+            <thead><tr><th>Statut des circuits</th><th>Nombre</th></tr></thead>
+            <tbody id="tbodyCircuits"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Nettoiement</h3>
+          <canvas id="chartNetto" height="120"></canvas>
+          <table>
+            <thead><tr><th>Indicateur</th><th>Valeur</th></tr></thead>
+            <tbody>
+              <tr><td>Kilométrage planifié</td><td id="kmPlan">0</td></tr>
+              <tr><td>Kilométrage balayé</td><td id="kmBal">0</td></tr>
+              <tr><td>Kilométrage désensablé</td><td id="kmDes">0</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Mobilier urbain</h3>
+          <canvas id="chartMobilier" height="120"></canvas>
+          <table>
+            <thead><tr><th>Type</th><th>Sites</th><th>Bacs</th><th>Levés</th></tr></thead>
+            <tbody>
+              <tr><td>PRN</td><td id="prnSites">0</td><td id="prnBacs">0</td><td id="prnLeves">0</td></tr>
+              <tr><td>PP</td><td id="ppSites">0</td><td id="ppBacs">0</td><td id="ppLeves">0</td></tr>
+              <tr><td>Bacs de rue</td><td id="rueSites">0</td><td id="rueBacs">0</td><td id="rueLeves">0</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Interventions ponctuelles</h3>
+          <table>
+            <thead><tr><th>Indicateur</th><th>Valeur</th></tr></thead>
+            <tbody>
+              <tr><td>Agents mobilisés</td><td id="intAgents">0</td></tr>
+              <tr><td>Pelles mécaniques</td><td id="intPelles">0</td></tr>
+              <tr><td>Tasseuses</td><td id="intTasseuses">0</td></tr>
+              <tr><td>Camions ciel ouvert</td><td id="intCamions">0</td></tr>
+            </tbody>
+          </table>
+          <div class="muted" style="margin-top:8px">Sites: <span id="intSites">—</span></div>
+        </div>
+
+        <div class="card" style="grid-column: span 12;">
+          <h3>Effectifs</h3>
+          <table>
+            <thead><tr><th>Période</th><th>Effectifs</th><th>Présents</th><th>Absents</th><th>Malades</th><th>Congés</th><th>Retards</th></tr></thead>
+            <tbody>
+              <tr><td>Matin</td><td id="effMtot">0</td><td id="effMpre">0</td><td id="effMabs">0</td><td id="effMmal">0</td><td id="effMcon">0</td><td id="effMren">0</td></tr>
+              <tr><td>Après-midi</td><td id="effAtot">0</td><td id="effApre">0</td><td id="effAabs">0</td><td id="effAmal">0</td><td id="effAcon">0</td><td id="effAren">0</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" style="grid-column: span 6;">
+          <h3> Anomalies signalées</h3>
+          <!-- <div class="muted">Données issues de /rapports sur la période</div> -->
+          <table>
+            <thead><tr><th>Type</th><th>Nombre</th></tr></thead>
+            <tbody id="tbodyAnomInsight"></tbody>
+          </table>
+        </div>
+
+        <div class="card" style="grid-column: span 6;">
+          <h3>Carte: Anomalies (rouge) & Opérations spéciales (vert)</h3>
+          <div id="mapAnom"></div>
+        </div>
+
+        
+      </div>
+
+      <div class="charts">
+        <div class="chart-card" style="grid-column: span 6;">
+          <h3>Statut des circuits</h3>
+          <canvas id="chartCircuits" height="150"></canvas>
+        </div>
+        <div class="chart-card" style="grid-column: span 6;">
+          <h3>Effectifs (Matin vs Après-midi)</h3>
+          <canvas id="chartEffectifs" height="150"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const backend = 'http://localhost:5000';
+      const dateFrom = document.getElementById('dateFrom');
+      const dateTo = document.getElementById('dateTo');
+      const uniteInput = document.getElementById('uniteInput');
+      const agentSelect = document.getElementById('agentSelect');
+      const statusSelect = document.getElementById('statusSelect');
+      const applyBtn = document.getElementById('applyBtn');
+      const msg = document.getElementById('msg');
+      let map, layerAnom;
+
+      function todayISO(){ const d=new Date(); return d.toISOString().substring(0,10); }
+      function toISO(dt){ return new Date(dt).toISOString().substring(0,10); }
+      function addDays(dateStr, days){ const d=new Date(dateStr); d.setDate(d.getDate()+days); return toISO(d); }
+      function enumerateDates(fromStr, toStr){
+        const out=[]; if(!fromStr && !toStr) return out;
+        const start = fromStr || toStr; const end = toStr || fromStr;
+        let cur = toISO(start); const endIso = toISO(end);
+        while (cur <= endIso){ out.push(cur); cur = addDays(cur, 1); }
+        return out;
+      }
+
+      async function fetchJson(url){
+        const res = await fetch(url);
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) throw new Error(await res.text());
+        return res.json();
+      }
+
+      function setText(id, val){ const el=document.getElementById(id); if (el) el.textContent = String(val); }
+
+      function resetKPIs(){
+        setText('kpiTotal', 0); setText('kpiCompletion', '0%'); setText('kpiFinalises', 0); setText('kpiIncomplets', 0);
+        setText('colPlan', 0); setText('colColl', 0); setText('colTonnage', 0);
+        setText('kmPlan', 0); setText('kmBal', 0); setText('kmDes', 0);
+        ['prn','pp','rue'].forEach(t=>{ setText(`${t}Sites`,0); setText(`${t}Bacs`,0); setText(`${t}Leves`,0); });
+        setText('intAgents',0); setText('intPelles',0); setText('intTasseuses',0); setText('intCamions',0); setText('intSites','—');
+        setText('effMtot',0); setText('effMpre',0); setText('effMabs',0); setText('effMmal',0); setText('effMcon',0); setText('effMren',0);
+        setText('effAtot',0); setText('effApre',0); setText('effAabs',0); setText('effAmal',0); setText('effAcon',0); setText('effAren',0);
+        const tb=document.getElementById('tbodyCircuits'); if (tb) tb.innerHTML='';
+        // const tr=document.getElementById('tbodyReports'); if (tr) tr.innerHTML='';
+        const anT = document.getElementById('tbodyAnomInsight'); if (anT) anT.innerHTML='';
+        if (layerAnom) layerAnom.clearLayers();
+      }
+
+      function populateAgentFilter(reports){
+        const names = Array.from(new Set(reports.map(r=>r.agent).filter(Boolean)));
+        const prev = agentSelect.value;
+        agentSelect.innerHTML = '<option value="">Tous</option>' + names.map(n=>`<option>${n}</option>`).join('');
+        if (names.includes(prev)) agentSelect.value = prev;
+      }
+
+      function renderSummary(data){
+        let reports = data.reports || [];
+        // Filtres dynamiques
+        const agent = (agentSelect.value||'').trim();
+        const st = (statusSelect.value||'').trim().toLowerCase();
+        if (agent) reports = reports.filter(r=> (r.agent||'')===agent);
+        if (st) reports = reports.filter(r=> (r.status||'').toLowerCase()===st);
+
+        populateAgentFilter(data.reports||[]);
+        setText('kpiTotal', reports.length);
+        const avg = reports.length ? Math.round(reports.reduce((s,r)=>s+Number(r.completion||0),0)/reports.length) : 0;
+        setText('kpiCompletion', `${avg}%`);
+        setText('kpiFinalises', reports.filter(r=> (r.status||'').toLowerCase()==='finalise').length);
+        setText('kpiIncomplets', reports.filter(r=> ['brouillon','partiel','complet'].includes((r.status||'').toLowerCase())).length);
+
+        // Agrégations
+        const sum = (fn)=> reports.reduce((s,r)=> s + Number(fn(r)||0), 0);
+        setText('colPlan', sum(r=>r.collecte?.planifies));
+        setText('colColl', sum(r=>r.collecte?.collectes));
+        setText('colTonnage', Number(sum(r=>r.collecte?.tonnage)).toFixed(2).replace(/\.00$/,''));
+
+        setText('kmPlan', sum(r=>r.nettoiement?.km_planifies));
+        setText('kmBal', sum(r=>r.nettoiement?.km_balayes));
+        setText('kmDes', sum(r=>r.nettoiement?.km_desensables));
+
+        const mSum = (type, key)=> reports.reduce((s,r)=> s + Number((r.mobilier?.[type]||{})[key]||0), 0);
+        ['prn','pp','rue'].forEach(t=>{
+          setText(`${t}Sites`, mSum(t,'sites')); setText(`${t}Bacs`, mSum(t,'bacs')); setText(`${t}Leves`, mSum(t,'leves'));
+        });
+
+        setText('intAgents', sum(r=>r.interventions?.agents));
+        setText('intPelles', sum(r=>r.interventions?.pelles));
+        setText('intTasseuses', sum(r=>r.interventions?.tasseuses));
+        setText('intCamions', sum(r=>r.interventions?.camions_ouvert));
+        const sites = reports.flatMap(r=> (r.interventions?.sites)||[]);
+        setText('intSites', sites.length? sites.join(', ') : '—');
+
+        const eff = (per,key)=> reports.reduce((s,r)=> s + Number((r.effectifs?.[per]||{})[key]||0), 0);
+        setText('effMtot', eff('matin','effectifs')); setText('effMpre', eff('matin','presents')); setText('effMabs', eff('matin','absents')); setText('effMmal', eff('matin','malades')); setText('effMcon', eff('matin','conges')); setText('effMren', eff('matin','renforts'));
+        setText('effAtot', eff('apresmidi','effectifs')); setText('effApre', eff('apresmidi','presents')); setText('effAabs', eff('apresmidi','absents')); setText('effAmal', eff('apresmidi','malades')); setText('effAcon', eff('apresmidi','conges')); setText('effAren', eff('apresmidi','renforts'));
+
+        // Table circuits (statuts cumulés)
+        const circuits = new Map();
+        reports.forEach(r=>{
+          const m=r.collecte?.circuits||{}; Object.entries(m).forEach(([k,v])=> circuits.set(k, (circuits.get(k)||0)+Number(v||0)));
+        });
+        const tbody = document.getElementById('tbodyCircuits');
+        circuits.forEach((v,k)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${k||'—'}</td><td>${v}</td>`; tbody.appendChild(tr); });
+
+        // Table rapports retirée du dashboard
+
+        // Charts
+        renderCharts({ reports, circuits, km_plan: Number(document.getElementById('kmPlan').textContent)||0, km_bal: Number(document.getElementById('kmBal').textContent)||0, km_des: Number(document.getElementById('kmDes').textContent)||0 });
+      }
+
+      let charts = {};
+      function ensureChart(id, cfg){ if (charts[id]) { charts[id].destroy(); } charts[id] = new Chart(document.getElementById(id), cfg); }
+
+      function renderCharts(ctx){
+        // Collecte (planifiés vs collectés + tonnage)
+        const plan = Number(document.getElementById('colPlan').textContent)||0;
+        const coll = Number(document.getElementById('colColl').textContent)||0;
+        const ton = Number((document.getElementById('colTonnage').textContent||'0').toString().replace(',', '.'))||0;
+        ensureChart('chartCollecte', {
+          type: 'doughnut', data: { labels:['Planifiés','Collectés','Tonnage (t)'], datasets:[{ data:[plan, coll, ton], backgroundColor:['#93c5fd','#34d399','#fbbf24'] }] }, options: { plugins:{ legend:{ position:'bottom' } } }
+        });
+
+        // Nettoiement
+        ensureChart('chartNetto', {
+          type: 'bar', data: { labels:['Planifié','Balayé','Désensablé'], datasets:[{ label:'Km', data:[ctx.km_plan, ctx.km_bal, ctx.km_des], backgroundColor:['#60a5fa','#34d399','#f87171'] }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+        });
+
+        // Mobilier (levés)
+        const prn = Number(document.getElementById('prnLeves').textContent)||0;
+        const pp = Number(document.getElementById('ppLeves').textContent)||0;
+        const rue = Number(document.getElementById('rueLeves').textContent)||0;
+        ensureChart('chartMobilier', {
+          type: 'bar', data:{ labels:['PRN','PP','Rue'], datasets:[{ label:'Bacs levés', data:[prn, pp, rue], backgroundColor:['#10b981','#06b6d4','#f59e0b'] }] }, options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
+        });
+
+        // Statut circuits (doughnut)
+        const labels = Array.from(ctx.circuits.keys());
+        const values = labels.map(k=> ctx.circuits.get(k));
+        ensureChart('chartCircuits', { type:'doughnut', data:{ labels, datasets:[{ data: values, backgroundColor:['#22c55e','#f97316','#ef4444','#94a3b8'] }] }, options:{ plugins:{ legend:{ position:'bottom' } } } });
+
+        // Effectifs empilés
+        const m = {
+          effectifs: Number(document.getElementById('effMtot').textContent)||0,
+          presents: Number(document.getElementById('effMpre').textContent)||0,
+          absents: Number(document.getElementById('effMabs').textContent)||0,
+          malades: Number(document.getElementById('effMmal').textContent)||0,
+          conges: Number(document.getElementById('effMcon').textContent)||0
+        };
+        const a = {
+          effectifs: Number(document.getElementById('effAtot').textContent)||0,
+          presents: Number(document.getElementById('effApre').textContent)||0,
+          absents: Number(document.getElementById('effAabs').textContent)||0,
+          malades: Number(document.getElementById('effAmal').textContent)||0,
+          conges: Number(document.getElementById('effAcon').textContent)||0
+        };
+        ensureChart('chartEffectifs', {
+          type:'bar', data:{ labels:['Matin','Après-midi'], datasets:[
+            { label:'Présents', data:[m.presents, a.presents], backgroundColor:'#16a34a', stack:'s' },
+            { label:'Absents', data:[m.absents, a.absents], backgroundColor:'#ef4444', stack:'s' },
+            { label:'Malades', data:[m.malades, a.malades], backgroundColor:'#f59e0b', stack:'s' },
+            { label:'Congés', data:[m.conges, a.conges], backgroundColor:'#60a5fa', stack:'s' },
+          ]}, options:{ responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
+        });
+      }
+
+      // --- RAPPORTS (pour anomalies & opérations spéciales) ---
+      async function loadRapportsRange(){
+        const dates = enumerateDates(dateFrom.value, dateTo.value);
+        if (dates.length===0) return [];
+        const unite = (uniteInput.value||'').trim();
+        const urls = dates.map(d=>{
+          const q = new URLSearchParams({ date_from: d }); if (unite) q.set('zone', unite); return `${backend}/rapports?${q.toString()}`;
+        });
+        const results = await Promise.allSettled(urls.map(u=>fetch(u).then(r=>r.json())));
+        const byId = new Map();
+        results.forEach(r=>{ if (r.status==='fulfilled' && r.value && Array.isArray(r.value.items)) {
+          r.value.items.forEach(it=>{ if (it && it.id!=null) byId.set(it.id, it); });
+        }});
+        return Array.from(byId.values());
+      }
+
+      function norm(s){ try{ return String(s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim(); }catch{ return (s||'').toString().toLowerCase().trim(); } }
+      function isAnomalieItem(r){
+        const t = norm(r.type_activite);
+        if (t==='anomalie' || t==='anomalies') return true;
+        if (Array.isArray(r.activites)) return r.activites.map(norm).some(v=> v==='anomalie' || v==='anomalies');
+        return false;
+      }
+      function isOperationSpecialeItem(r){
+        const t = norm(r.type_activite);
+        if (t==='operation speciale' || t==='operations speciales') return true;
+        if (Array.isArray(r.activites)) return r.activites.map(norm).some(v=> v==='operation speciale' || v==='operations speciales');
+        return false;
+      }
+
+      function renderAnomaliesInsight(items){
+        const rows = [
+          { label: 'Anomalies', value: items.filter(isAnomalieItem).length },
+          { label: 'Opérations spéciales', value: items.filter(isOperationSpecialeItem).length },
+        ];
+        const tb = document.getElementById('tbodyAnomInsight');
+        if (!tb) return; tb.innerHTML='';
+        rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${r.label}</td><td>${r.value}</td>`; tb.appendChild(tr); });
+      }
+
+      function ensureMap(){
+        if (!map){
+          map = L.map('mapAnom').setView([14.6937, -17.4441], 6);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+          layerAnom = L.layerGroup().addTo(map);
+        }
+      }
+
+      function renderAnomaliesMap(items){
+        ensureMap(); layerAnom.clearLayers();
+        const pts = items.filter(r=> typeof r.latitude==='number' && typeof r.longitude==='number' && (isAnomalieItem(r) || isOperationSpecialeItem(r)));
+
+        // Custom colored pin icons
+        const iconShadow = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png';
+        const iconRed = L.icon({ iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: iconShadow, iconSize:[25,41], iconAnchor:[12,41], shadowSize:[41,41] });
+        const iconGreen = L.icon({ iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: iconShadow, iconSize:[25,41], iconAnchor:[12,41], shadowSize:[41,41] });
+
+        pts.forEach(r=>{
+          const icon = isAnomalieItem(r)? iconRed : iconGreen;
+          const m = L.marker([r.latitude, r.longitude], { icon });
+          const infos = [
+            `<strong>${r.type_activite||''}</strong>`,
+            r.zone? `Zone: ${r.zone}`: '',
+            (r.activites&&r.activites.length)? `Activités: ${(r.activites||[]).join(', ')}`: '',
+            r.date_rapport? `Date: ${r.date_rapport}`: '',
+            r.commentaire? `Commentaire: ${String(r.commentaire).replace(/</g,'&lt;')}`: ''
+          ].filter(Boolean).join('<br>');
+          m.bindPopup(infos);
+          m.addTo(layerAnom);
+        });
+        if (pts.length>0){
+          const bounds = L.latLngBounds(pts.map(r=>[r.latitude, r.longitude]));
+          map.fitBounds(bounds.pad(0.2));
+        }
+      }
+
+      async function load(){
+        resetKPIs();
+        // Préparer la plage de dates
+        if (!dateFrom.value) dateFrom.value = todayISO();
+        if (!dateTo.value) dateTo.value = dateFrom.value;
+        const dates = enumerateDates(dateFrom.value, dateTo.value);
+        if (dates.length === 0){ msg.textContent = 'Veuillez choisir au moins une date.'; return; }
+        const unite = (uniteInput.value||'').trim();
+        try {
+          msg.textContent = 'Chargement…';
+          // Récupérer tous les résumés et les agréger
+          const urls = dates.map(d=>{
+            const q = new URLSearchParams({ date: d }); if (unite) q.set('unite', unite); return `${backend}/dashboard/summary?${q.toString()}`;
+          });
+        const results = await Promise.all(urls.map(u=>fetchJson(u)));
+          // Fusionner tous les reports
+          const merged = { reports: [] };
+          results.forEach(r=>{ (r.reports||[]).forEach(x=> merged.reports.push(x)); });
+          renderSummary(merged);
+          // Charger rapports pour anomalies/opérations spéciales
+          const items = await loadRapportsRange();
+          renderAnomaliesInsight(items);
+          renderAnomaliesMap(items);
+          msg.textContent = '';
+        } catch(e){
+          msg.textContent = `Erreur: ${e.message}`;
+          console.error(e);
+        }
+      }
+
+      applyBtn.addEventListener('click', load);
+      agentSelect.addEventListener('change', load);
+      statusSelect.addEventListener('change', load);
+      (function init(){ const t=todayISO(); dateFrom.value=t; dateTo.value=t; })();
+    </script>
+  </body>
+  </html>
+
+

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SONAGED - Rapports</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 16px; }
+      .container { max-width: 960px; margin: 0 auto; }
+      input, select, button { padding: 8px; margin: 6px 8px 6px 0; }
+      table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+      th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+      th { background: #f5f5f5; text-align: left; }
+      header { display: flex; align-items: center; justify-content: space-between; }
+      .filters { display: flex; flex-wrap: wrap; align-items: center; }
+      a { color: #0f766e; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h2>Listing des rapports</h2>
+        <a href="index.html">Saisie d'un rapport</a>
+      </header>$ 
+      <div class="filters">
+        <select id="agentFilter">
+          <option value="">Agent: Tous</option>
+        </select>
+        <input type="date" id="dateFrom" />
+        <input type="date" id="dateTo" />
+        <input type="text" id="zoneFilter" placeholder="Zone" />
+        <button id="applyBtn">Appliquer</button>
+        <button id="exportBtn">Exporter CSV</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Agent</th>
+            <th>Date</th>
+            <th>Heure</th>
+            <th>Zone</th>
+            <th>Type</th>
+            <th>Activités</th>
+            <th>Commentaire</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <script>
+      const agentFilter = document.getElementById('agentFilter');
+      const dateFrom = document.getElementById('dateFrom');
+      const dateTo = document.getElementById('dateTo');
+      const zoneFilter = document.getElementById('zoneFilter');
+      const tbody = document.getElementById('tbody');
+      const applyBtn = document.getElementById('applyBtn');
+      const exportBtn = document.getElementById('exportBtn');
+      const agentIdToName = {};
+
+      async function fetchJson(url, options) {
+        const res = await fetch(url, options);
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          const text = await res.text();
+          throw new Error(`Unexpected response (status ${res.status}): ${text.substring(0, 300)}`);
+        }
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(err);
+        }
+        return res.json();
+      }
+
+      async function loadAgents() {
+        const json = await fetchJson('http://localhost:5000/agents');
+        (json.items || []).forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.id;
+          opt.textContent = a.nom;
+          agentFilter.appendChild(opt);
+          agentIdToName[a.id] = a.nom;
+        });
+      }
+
+      function serializeQuery(params) {
+        const usp = new URLSearchParams();
+        Object.entries(params).forEach(([k,v]) => { if (v) usp.set(k,v); });
+        return usp.toString();
+      }
+
+      async function loadReports() {
+        const q = serializeQuery({
+          agent_id: agentFilter.value,
+          zone: zoneFilter.value,
+          date_from: dateFrom.value,
+          date_to: dateTo.value,
+        });
+        const url = 'http://localhost:5000/rapports' + (q ? ('?' + q) : '');
+        const json = await fetchJson(url);
+        renderRows(json.items || []);
+      }
+
+      function formatDate(d) {
+        if (!d) return '';
+        // d may be 'YYYY-MM-DD' or full ISO string
+        return String(d).substring(0, 10);
+      }
+
+      function formatTime(t) {
+        if (!t) return '';
+        // 'HH:MM:SS' -> 'HH:MM'
+        const s = String(t);
+        return s.length >= 5 ? s.substring(0,5) : s;
+      }
+
+      function renderRows(items) {
+        tbody.innerHTML = '';
+        items.forEach(r => {
+          const tr = document.createElement('tr');
+          const activites = Array.isArray(r.activites) ? r.activites.join('; ') : '';
+          const agentName = agentIdToName[r.agent_id] || r.agent_id || '';
+          tr.innerHTML = `
+            <td>${r.id}</td>
+            <td>${agentName}</td>
+            <td>${formatDate(r.date_rapport)}</td>
+            <td>${formatTime(r.heure_rapport)}</td>
+            <td>${r.zone ?? ''}</td>
+            <td>${r.type_activite ?? ''}</td>
+            <td>${activites}</td>
+            <td>${r.commentaire ?? ''}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function exportCSV(items) {
+        const headers = ['id','agent','date_rapport','heure_rapport','zone','type_activite','activites','commentaire'];
+        const rows = [headers.join(',')];
+        items.forEach(r => {
+          const activites = Array.isArray(r.activites) ? r.activites.join(' | ') : '';
+          const vals = [r.id, (agentIdToName[r.agent_id]||r.agent_id||''), formatDate(r.date_rapport), formatTime(r.heure_rapport), r.zone, r.type_activite, activites, (r.commentaire||'').replaceAll('\n',' ')];
+          rows.push(vals.map(v => (v==null?'':String(v).replaceAll(',', ';'))).join(','));
+        });
+        const blob = new Blob([rows.join('\n')], {type: 'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'rapports.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      applyBtn.addEventListener('click', loadReports);
+      exportBtn.addEventListener('click', async () => {
+        const q = serializeQuery({
+          agent_id: agentFilter.value,
+          zone: zoneFilter.value,
+          date_from: dateFrom.value,
+          date_to: dateTo.value,
+        });
+        const url = 'http://localhost:5000/rapports' + (q ? ('?' + q) : '');
+        const json = await fetchJson(url);
+        exportCSV(json.items || []);
+      });
+
+      loadAgents().then(loadReports);
+    </script>
+  </body>
+  </html>
+
+

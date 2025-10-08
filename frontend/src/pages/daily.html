@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rapport journalier - SONAGED</title>
+    <link rel="stylesheet" href="daily.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h2>Rapport journalier</h2>
+        <!-- <div class="muted">Création, indicateurs collecte, circuits, et récap</div> -->
+      </div>
+    </header>
+    <div class="container">
+      <div class="grid">
+        <div class="card half">
+          <h3>1) Créer le rapport</h3>
+          <div id="completionStatus" class="completion-indicator" style="display:none;">
+            <div class="completion-bar">
+              <div class="completion-fill" id="completionFill"></div>
+            </div>
+            <span id="completionText" class="completion-text"></span>
+          </div>
+          <div class="row">
+            <div>
+              <label>Matricule (agent)</label>
+              <input type="text" id="matriculeInput" placeholder="Ex: MAT002" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="checkMatBtn">Vérifier</button>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Agent</label>
+              <input type="text" id="agentName" disabled />
+            </div>
+            <div>
+              <label>Unité/Commune</label>
+              <input type="text" id="uniteInput" placeholder="Ex: UC3 / Medina" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Date</label>
+              <input type="date" id="dateInput" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="primary" id="createBtn" disabled>Créer l'entête</button>
+            </div>
+          </div>
+          <div class="muted">ID créé: <span id="rid">—</span> <span id="createMsg"></span></div>
+        </div>
+
+        <div class="card half">
+          <h3>2) Collecte — Indicateurs</h3>
+          <div class="row">
+            <div><label>Planifiés</label><input type="number" id="collPlan" /></div>
+            <div><label>Collectés</label><input type="number" id="collColl" /></div>
+            <div><label>Tonnage</label><input type="number" step="0.01" id="collTonn" /></div>
+          </div>
+          <div class="row">
+            <div><label>Dépôts récurrents</label><input type="number" id="collRec" /></div>
+            <div><label>Levés</label><input type="number" id="collRecLev" /></div>
+          </div>
+          <div class="row">
+            <div><label>Sauvages identifiés</label><input type="number" id="collSavId" placeholder="0" /></div>
+            <div><label>Sauvages traités</label><input type="number" id="collSavTr" placeholder="0" /></div>
+          </div>
+          <div style="margin-top:8px">
+            <button class="primary" id="saveIndicsBtn">Enregistrer les indicateurs</button>
+            <span id="indicsMsg" class="muted"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>3) Collecte — Circuits</h3>
+          <div class="row">
+            <div><label>Nom</label><input type="text" id="cNom" placeholder="Ex: Ecotra grandes artères Matin" /></div>
+            <div><label>N° porte</label><input type="text" id="cPorte" placeholder="9061A" /></div>
+            <div><label>Début</label><input type="time" id="cDeb" /></div>
+            <div><label>Fin</label><input type="time" id="cFin" /></div>
+            <div><label>Durée</label><input type="text" id="cDur" placeholder="04:30" /></div>
+            <div><label>Poids</label><input type="text" id="cPoids" placeholder="11.700" /></div>
+            <div><label>Obs.</label><input type="text" id="cObs" placeholder="Circuit terminé" /></div>
+          </div>
+          <div style="margin-top:8px">
+            <button class="primary" id="addCircuitBtn">Ajouter le circuit</button>
+            <span id="circuitMsg" class="muted"></span>
+          </div>
+          <table style="margin-top:10px">
+            <thead><tr><th>Nom</th><th>N°</th><th>Début</th><th>Fin</th><th>Durée</th><th>Poids</th><th>Obs.</th><th></th></tr></thead>
+            <tbody id="circuitsTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>4) Collecte — Caisses Poly-benne</h3>
+          <div class="row">
+            <div><label>Sites de caisses</label><input type="number" id="pbSites" /></div>
+            <div><label>Nb caisses</label><input type="number" id="pbNb" /></div>
+            <div><label>Nb caisses levées</label><input type="number" id="pbNbLev" /></div>
+            <div><label>Poids collecté</label><input type="number" step="0.01" id="pbPoids" /></div>
+          </div>
+          <div style="margin-top:8px">
+            <button class="primary" id="savePolyBtn">Enregistrer Poly-benne</button>
+            <span id="polyMsg" class="muted"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>5) Récapitulatif</h3>
+          <div style="display:flex; gap:8px">
+            <button id="refreshRecap">Rafraîchir</button>
+            <!-- <button class="primary" id="finalizeBtn">Finaliser le rapport</button> -->
+            <span id="recapMsg" class="muted"></span>
+          </div>
+          <pre id="recapBox" style="margin-top:10px"></pre>
+          <div style="margin-top:8px; display:flex; gap:8px">
+            <a href="dailyNet.html" id="toNet" style="background:#0f766e;color:#fff;padding:10px 12px;border-radius:8px;text-decoration:none">Continuer vers Nettoiement</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="daily.js"></script>
+  </body>
+  </html>
+
+

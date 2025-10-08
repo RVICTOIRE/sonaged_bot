@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Difficultés & Recommandations - SONAGED</title>
+    <link rel="stylesheet" href="dailyDR.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h2>Situation du personnel, Difficultés & Recommandations</h2>
+        <!-- <div class="muted">Finaliser le rapport journalier</div> -->
+      </div>
+    </header>
+    <div class="container">
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>Matricule (agent)</label>
+            <input id="matricule" placeholder="Ex: MAT002" />
+          </div>
+          <div>
+            <label>ID Rapport</label>
+            <input id="ridBox" disabled />
+          </div>
+        </div>
+
+        <h3 style="margin-top:16px">SITUATION DU PERSONNEL</h3>
+        <div class="row">
+          <div>
+            <label>Matin</label>
+            <table id="tabMatin">
+              <thead>
+                <tr><th>Catégorie</th><th>Effectifs</th><th>Présents</th><th>Absents</th><th>Malades</th><th>Congés</th><th>Retard</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><input value="Collecteurs" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="Balayeurs" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="AP de site" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="AP Mob Urbain" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="Superviseurs" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="Assistant" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="RUC" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="Autres encadrement" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <label>Après-midi</label>
+            <table id="tabApres">
+              <thead>
+                <tr><th>Catégorie</th><th>Effectifs</th><th>Présents</th><th>Absents</th><th>Malades</th><th>Congés</th><th>Retard</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><input value="Balayeurs" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="AP de Site" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="AP Mob Urbain" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="Superviseur" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="Assistant" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+                <tr><td><input value="RUC" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td><td><input type="number" value="0" /></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="saveEffBtn">Enregistrer Effectifs</button>
+          <span class="muted" id="effMsg"></span>
+        </div>
+        <div class="row">
+          <div>
+            <label>Difficultés (séparées par ";")</label>
+            <textarea id="diffBox" rows="3" placeholder="Ex: Manque de matériels; Manque d'effectifs"></textarea>
+          </div>
+          <div>
+            <label>Recommandations (séparées par ";")</label>
+            <textarea id="recoBox" rows="3" placeholder="Ex: Renforcer le personnel; Doter en EPI"></textarea>
+          </div>
+        </div>
+        <div class="row">
+          <button class="primary" id="saveBtn">Enregistrer</button>
+          <button class="primary" id="finalizeBtnDR">Finaliser le rapport</button>
+          <button id="recapBtn">Voir récap</button>
+          <button id="exportPdfBtn">Exporter PDF</button>
+          <button id="exportWordBtn">Exporter Word</button>
+        </div>
+        <div class="muted" id="msg"></div>
+        <pre id="recap"></pre>
+      </div>
+    </div>
+    <script src="dailyDR.js"></script>
+  </body>
+  </html>
+
+

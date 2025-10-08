@@ -1,0 +1,29 @@
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; background:#f6f7f9; }
+header { background:#0f766e; color:#fff; padding:16px; }
+.container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:16px; }
+.card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; grid-column: span 12; }
+.half { grid-column: span 6; }
+label { display:block; font-size:12px; color:#374151; margin-top:8px; }
+input, select, textarea, button { width: 100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; background:#fff; }
+.row { display:flex; gap:8px; }
+.row > * { flex:1; }
+button.primary { background:#0f766e; color:#fff; border:none; }
+pre { background:#0b1021; color:#e5e7eb; padding:10px; border-radius:8px; overflow:auto; }
+.muted { color:#6b7280; font-size:12px; }
+.error { color:#b91c1c; font-size:13px; }
+.ok { color:#065f46; font-size:13px; }
+table { width:100%; border-collapse:collapse; }
+th, td { border:1px solid #e5e7eb; padding:8px; font-size:14px; }
+th { background:#f3f4f6; text-align:left; }
+
+/* Indicateurs de complétion */
+.completion-indicator { margin: 12px 0; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; }
+.completion-bar { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+.completion-fill { height: 100%; background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%); transition: width 0.3s ease; }
+.completion-text { font-size: 12px; font-weight: 500; color: #374151; }
+.completion-text.brouillon { color: #6b7280; }
+.completion-text.partiel { color: #f59e0b; }
+.completion-text.complet { color: #10b981; }
+.completion-text.finalise { color: #059669; }
+
