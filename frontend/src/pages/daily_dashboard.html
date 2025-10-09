@@ -77,6 +77,19 @@
       </div>
 
       <div class="grid">
+        <div class="card" style="grid-column: span 12;">
+          <h3>Carte: Anomalies (rouge) & Opérations spéciales (vert)</h3>
+          <div id="mapAnom"></div>
+        </div>
+
+        <div class="card" style="grid-column: span 12;">
+          <h3>Anomalies signalées et interventions réalisées</h3>
+          <table>
+            <thead><tr><th>Type</th><th>Nombre</th></tr></thead>
+            <tbody id="tbodyAnomInsight"></tbody>
+          </table>
+        </div>
+
         <div class="card">
           <h3>Collecte</h3>
           <div class="muted">Planifiés / Collectés — Tonnage</div>
@@ -114,20 +127,6 @@
           </table>
         </div>
 
-        <div class="card">
-          <h3>Interventions ponctuelles</h3>
-          <table>
-            <thead><tr><th>Indicateur</th><th>Valeur</th></tr></thead>
-            <tbody>
-              <tr><td>Agents mobilisés</td><td id="intAgents">0</td></tr>
-              <tr><td>Pelles mécaniques</td><td id="intPelles">0</td></tr>
-              <tr><td>Tasseuses</td><td id="intTasseuses">0</td></tr>
-              <tr><td>Camions ciel ouvert</td><td id="intCamions">0</td></tr>
-            </tbody>
-          </table>
-          <div class="muted" style="margin-top:8px">Sites: <span id="intSites">—</span></div>
-        </div>
-
         <div class="card" style="grid-column: span 12;">
           <h3>Effectifs</h3>
           <table>
@@ -138,32 +137,27 @@
             </tbody>
           </table>
         </div>
-
-        <div class="card" style="grid-column: span 6;">
-          <h3> Anomalies signalées</h3>
-          <!-- <div class="muted">Données issues de /rapports sur la période</div> -->
-          <table>
-            <thead><tr><th>Type</th><th>Nombre</th></tr></thead>
-            <tbody id="tbodyAnomInsight"></tbody>
-          </table>
-        </div>
-
-        <div class="card" style="grid-column: span 6;">
-          <h3>Carte: Anomalies (rouge) & Opérations spéciales (vert)</h3>
-          <div id="mapAnom"></div>
-        </div>
-
-        
       </div>
-
       <div class="charts">
-        <div class="chart-card" style="grid-column: span 6;">
+        <!-- <div class="chart-card" style="grid-column: span 6;">
           <h3>Statut des circuits</h3>
           <canvas id="chartCircuits" height="150"></canvas>
-        </div>
+        </div> -->
         <div class="chart-card" style="grid-column: span 6;">
           <h3>Effectifs (Matin vs Après-midi)</h3>
           <canvas id="chartEffectifs" height="150"></canvas>
+        </div>
+        <div class="chart-card" style="grid-column: span 6;">
+          <h3>Polybenne — 🏗️ Bennes levées / Poids collecté</h3>
+          <canvas id="chartPoly" height="150"></canvas>
+        </div>
+        <div class="chart-card" style="grid-column: span 6;">
+          <h3>Interventions ponctuelles — 🧰 Sites & équipements</h3>
+          <div class="muted">Sites: <strong id="intSitesCount">0</strong></div>
+          <div id="intSitesList" class="muted" style="margin:6px 0 10px"></div>
+          <ul id="intEquipList" style="list-style:none; padding-left:0; margin-top:8px">
+            <!-- items dynamiques -->
+          </ul>
         </div>
       </div>
     </div>
@@ -313,14 +307,16 @@
           presents: Number(document.getElementById('effMpre').textContent)||0,
           absents: Number(document.getElementById('effMabs').textContent)||0,
           malades: Number(document.getElementById('effMmal').textContent)||0,
-          conges: Number(document.getElementById('effMcon').textContent)||0
+          conges: Number(document.getElementById('effMcon').textContent)||0,
+          retards: Number(document.getElementById('effMren').textContent)||0
         };
         const a = {
           effectifs: Number(document.getElementById('effAtot').textContent)||0,
           presents: Number(document.getElementById('effApre').textContent)||0,
           absents: Number(document.getElementById('effAabs').textContent)||0,
           malades: Number(document.getElementById('effAmal').textContent)||0,
-          conges: Number(document.getElementById('effAcon').textContent)||0
+          conges: Number(document.getElementById('effAcon').textContent)||0,
+          retards: Number(document.getElementById('effAren').textContent)||0
         };
         ensureChart('chartEffectifs', {
           type:'bar', data:{ labels:['Matin','Après-midi'], datasets:[
@@ -328,8 +324,60 @@
             { label:'Absents', data:[m.absents, a.absents], backgroundColor:'#ef4444', stack:'s' },
             { label:'Malades', data:[m.malades, a.malades], backgroundColor:'#f59e0b', stack:'s' },
             { label:'Congés', data:[m.conges, a.conges], backgroundColor:'#60a5fa', stack:'s' },
+            { label:'Retards', data:[m.retards, a.retards], backgroundColor:'#8b5cf6', stack:'s' },
           ]}, options:{ responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
         });
+
+        // Polybenne donut
+        const polyLevees = (ctx.reports||[]).reduce((s,r)=> s + Number(r.polybenne?.levees||0), 0);
+        const polyPoids = (ctx.reports||[]).reduce((s,r)=> s + Number(r.polybenne?.poids||0), 0);
+        ensureChart('chartPoly', {
+          type: 'doughnut',
+          data: {
+            labels: ['Bennes levées', 'Poids collecté (t)'],
+            datasets: [{ data: [polyLevees, polyPoids], backgroundColor: ['#10b981', '#0ea5e9'] }]
+          },
+          options: { plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx)=> `${ctx.label}: ${ctx.parsed}` } } } }
+        });
+
+        // Interventions — liste équipements + nb sites
+        const sites = (ctx.reports||[]).flatMap(r=>{
+          const arr = [];
+          // sources possibles: array interventions.sites
+          if (Array.isArray(r.interventions?.sites)) arr.push(...r.interventions.sites);
+          // string interventions.sites
+          if (typeof r.interventions?.sites === 'string') arr.push(...r.interventions.sites.split(/[;,]/));
+          // string depuis moyens_equipements.sites_quartiers
+          if (typeof r.moyens_equipements?.sites_quartiers === 'string') arr.push(...r.moyens_equipements.sites_quartiers.split(/[;,]/));
+          return arr;
+        }).map(s=> String(s).trim()).filter(Boolean);
+        const sitesCount = new Set(sites.map(s=> (s||'').trim().toLowerCase())).size;
+        const equip = {
+          '👷 Agents': (ctx.reports||[]).reduce((s,r)=> s + Number(r.interventions?.agents||0), 0),
+          '🛠️ Pelles': (ctx.reports||[]).reduce((s,r)=> s + Number(r.interventions?.pelles||0), 0),
+          '🚚 Camions ouverts': (ctx.reports||[]).reduce((s,r)=> s + Number(r.interventions?.camions_ouvert||0), 0),
+          '🧱 Tasseuses': (ctx.reports||[]).reduce((s,r)=> s + Number(r.interventions?.tasseuses||0), 0),
+        };
+        const ul = document.getElementById('intEquipList');
+        if (ul){
+          ul.innerHTML = '';
+          Object.entries(equip).forEach(([label,val])=>{
+            const li = document.createElement('li');
+            li.style.margin = '6px 0';
+            li.innerHTML = `<strong>${label}</strong>: ${val}`;
+            ul.appendChild(li);
+          });
+        }
+        const sc = document.getElementById('intSitesCount'); if (sc) sc.textContent = String(sitesCount);
+        const listSitesEl = document.getElementById('intSitesList');
+        if (listSitesEl){
+          const uniqueSites = Array.from(new Set(sites));
+          if (uniqueSites.length){
+            listSitesEl.innerHTML = uniqueSites.map(s=> `<span style="display:inline-block;background:#eef2ff;color:#334155;padding:4px 8px;border-radius:12px;margin:2px;">${s}</span>`).join('');
+          } else {
+            listSitesEl.textContent = '—';
+          }
+        }
       }
 
       // --- RAPPORTS (pour anomalies & opérations spéciales) ---

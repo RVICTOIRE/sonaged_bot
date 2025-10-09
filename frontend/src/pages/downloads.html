@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Téléchargements — Rapports SONAGED</title>
+    <style>
+      body{ font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin:0; background:#f6f7f9; }
+      header{ background:#0f766e; color:#fff; padding:16px; }
+      .container{ max-width:1100px; margin:0 auto; padding:16px; }
+      .filters{ display:flex; flex-wrap:wrap; gap:12px; align-items:end; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+      label{ display:block; font-size:12px; color:#374151; margin-bottom:4px; }
+      input, select, button{ padding:8px 10px; border:1px solid #d1d5db; border-radius:6px; background:#fff; }
+      button.primary{ background:#0f766e; color:#fff; border:none; }
+      table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
+      th, td{ border:1px solid #e5e7eb; padding:8px; text-align:left; font-size:13px; }
+      th{ background:#f3f4f6; }
+      .muted{ color:#6b7280; font-size:12px; }
+      .photo-grid{ display:flex; flex-wrap:wrap; gap:10px; }
+      .photo-grid figure{ width:160px; margin:0; }
+      .photo-grid img{ width:160px; height:120px; object-fit:cover; border:1px solid #e5e7eb; border-radius:6px; background:#f3f4f6; }
+      .photo-grid figcaption{ text-align:center; font-size:12px; color:#374151; margin-top:4px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h2>Téléchargements — Rapports journaliers</h2>
+        <div class="Primary">Générez vos rapports en PDF</div>
+      </div>
+    </header>
+    <div class="container">
+      <div class="filters">
+        <div>
+          <label for="dateOne">Date</label>
+          <input type="date" id="dateOne" />
+        </div>
+        <div>
+          <label for="dateFrom">Date début</label>
+          <input type="date" id="dateFrom" />
+        </div>
+        <div>
+          <label for="dateTo">Date fin</label>
+          <input type="date" id="dateTo" />
+        </div>
+        <div>
+          <label for="uniteInput">Unité/Commune</label>
+          <input id="uniteInput" placeholder="Ex: Medina" />
+        </div>
+        <div>
+          <button class="primary" id="searchByDateBtn">Rechercher les rapports</button>
+          <button id="searchRangeBtn">Rechercher (plage)</button>
+        </div>
+        <div id="msg" class="muted"></div>
+      </div>
+
+      <div style="margin-top:16px" id="listContainer">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Agent</th>
+              <th>Unité</th>
+              <th>Statut</th>
+              <th>%</th>
+              <th>Télécharger</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyByDate"></tbody>
+        </table>
+      </div>
+
+      <div class="filters" style="margin-top:16px">
+        <div>
+          <label for="reportIdInput">Rapport ID (détaillé)</label>
+          <input id="reportIdInput" placeholder="Ex: 22" />
+        </div>
+        <div>
+          <button class="primary" id="previewDetailedBtn">Aperçu détaillé</button>
+        </div>
+        <div>
+          <button id="printDetailedBtn">Imprimer PDF</button>
+        </div>
+        <div id="dmsg" class="muted"></div>
+      </div>
+      <div id="detailedPreview" style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px"></div>
+    </div>
+
+    <script>
+      const backend = 'http://localhost:5000';
+      const dateOne = document.getElementById('dateOne');
+      const dateFrom = document.getElementById('dateFrom');
+      const dateTo = document.getElementById('dateTo');
+      const uniteInput = document.getElementById('uniteInput');
+      const searchByDateBtn = document.getElementById('searchByDateBtn');
+      const searchRangeBtn = document.getElementById('searchRangeBtn');
+      const msg = document.getElementById('msg');
+
+      function todayISO(){ const d=new Date(); return d.toISOString().substring(0,10); }
+      function toISO(dt){ return new Date(dt).toISOString().substring(0,10); }
+      function addDays(dateStr, days){ const d=new Date(dateStr); d.setDate(d.getDate()+days); return toISO(d); }
+      function enumerateDates(fromStr, toStr){ if(!fromStr&&!toStr) return []; const start = fromStr||toStr; const end = toStr||fromStr; const out=[]; let cur=toISO(start); const endIso=toISO(end); while(cur<=endIso){ out.push(cur); cur=addDays(cur,1); } return out; }
+
+      async function fetchJson(url){ const r = await fetch(url); const ct=r.headers.get('content-type')||''; if(!ct.includes('application/json')) throw new Error(await r.text()); return r.json(); }
+
+      async function searchByDate(){
+        msg.textContent = 'Chargement…';
+        const date = dateOne.value || todayISO();
+        const unite = (uniteInput.value||'').trim();
+        const q = new URLSearchParams({ date }); if (unite) q.set('unite', unite);
+        const res = await fetchJson(`${backend}/dashboard/summary?${q}`);
+        const tbody = document.getElementById('tbodyByDate'); tbody.innerHTML='';
+        (res.reports||[]).forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.rapport_id}</td><td>${r.agent||''}</td><td>${res.unite||''}</td><td>${r.status||''}</td><td>${r.completion||0}</td><td><button data-id="${r.rapport_id}" class="dlBtn">Voir / Télécharger</button></td>`;
+          tbody.appendChild(tr);
+        });
+        document.querySelectorAll('.dlBtn').forEach(btn=>{
+          btn.addEventListener('click', (e)=>{
+            const rid = e.currentTarget.getAttribute('data-id');
+            document.getElementById('reportIdInput').value = rid;
+            loadDetailed();
+          });
+        });
+        msg.textContent='';
+      }
+
+      async function searchRange(){
+        msg.textContent = 'Chargement…';
+        const dates = enumerateDates(dateFrom.value, dateTo.value);
+        if (dates.length===0){ msg.textContent='Choisissez au moins une date (début/fin).'; return; }
+        const unite = (uniteInput.value||'').trim();
+        const urls = dates.map(d=>{ const q=new URLSearchParams({date:d}); if(unite) q.set('unite',unite); return `${backend}/dashboard/summary?${q}`; });
+        const results = await Promise.all(urls.map(fetchJson));
+        const tbody = document.getElementById('tbodyByDate'); tbody.innerHTML='';
+        results.forEach(res=>{
+          (res.reports||[]).forEach(r=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.rapport_id}</td><td>${r.agent||''}</td><td>${res.unite||''}</td><td>${r.status||''}</td><td>${r.completion||0}</td><td><button data-id="${r.rapport_id}" class="dlBtn">Voir / Télécharger</button></td>`;
+            tbody.appendChild(tr);
+          });
+        });
+        document.querySelectorAll('.dlBtn').forEach(btn=>{
+          btn.addEventListener('click', (e)=>{
+            const rid = e.currentTarget.getAttribute('data-id');
+            document.getElementById('reportIdInput').value = rid;
+            loadDetailed();
+          });
+        });
+        msg.textContent='';
+      }
+
+      function exportCSVRows(rows){
+        const blob = new Blob([rows.map(a=>a.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n')], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='rapports_export.csv'; a.click(); URL.revokeObjectURL(url);
+      }
+
+      searchByDateBtn.addEventListener('click', searchByDate);
+      searchRangeBtn.addEventListener('click', searchRange);
+      (function init(){ const t=todayISO(); dateOne.value = t; dateFrom.value=t; dateTo.value=t; })();
+
+      // ------------------ Rapport détaillé (mise en page souhaitée) ------------------
+      function valOrNeant(v){ return (v===null || v===undefined || v==='' )? 'Néant' : v; }
+      function htmlDetailed(r){
+        const ci = r.collecte_indicateurs||{};
+        const circ = r.collecte_circuits||[];
+        const poly = r.polybenne||{};
+        const net = r.nettoiement||{};
+        const bacs = r.bacs_indicateurs||[];
+        const meq = r.moyens_equipements||{};
+        // Normaliser effectifs: soit structure {matin, apresmidi}, soit tableau avec periode
+        let effNorm = { matin: [], apresmidi: [] };
+        if (r.effectifs && (r.effectifs.matin || r.effectifs.apresmidi)){
+          effNorm.matin = r.effectifs.matin || [];
+          effNorm.apresmidi = r.effectifs.apresmidi || [];
+        } else if (Array.isArray(r.effectifs)){
+          const items = r.effectifs;
+          effNorm.matin = items.filter(e=> String(e.periode||'').toLowerCase().includes('matin'));
+          effNorm.apresmidi = items.filter(e=> /apres|après|apres_midi|apresmidi/.test(String(e.periode||'').toLowerCase()));
+        }
+        const diffs = r.difficultes||[];
+        const recos = r.recommandations||[];
+        const photos = r.photos||[];
+
+        const effTable = (rows, title)=>{
+          const trs = (rows||[]).map(e=>`<tr><td>${e.categorie||''}</td><td>${e.effectifs||0}</td><td>${e.presents||0}</td><td>${e.absents||0}</td><td>${e.malades||0}</td><td>${e.conges||0}</td><td>${e.remplacement||0}</td></tr>`).join('');
+          return `<h4>${title}</h4><table><thead><tr><th>Catégorie</th><th>Effectifs</th><th>Présents</th><th>Absents</th><th>Malades</th><th>Congés</th><th>R</th></tr></thead><tbody>${trs}</tbody></table>`;
+        };
+
+        return `
+          <div style="text-align:center;font-weight:700">RAPPORT JOURNALIER DE L’UNITE COMMUNALE ${valOrNeant(r.unite_commune)} JOUR</div>
+          <div style="text-align:center;margin-bottom:12px">DATE : ${valOrNeant(r.date_rapport)}</div>
+
+          <h3>1. Personnels (Matin / Après‑midi)</h3>
+          ${(effNorm.matin.length||effNorm.apresmidi.length)? `${effTable(effNorm.matin||[], 'Matin')}${effTable(effNorm.apresmidi||[], 'Après midi')}`: '<div class="muted">Néant</div>'}
+
+          <h3>2. Collecte : généralités</h3>
+          <table><thead><tr><th>Indicateurs</th><th>Valeur</th></tr></thead><tbody>
+            <tr><td>Nombre Circuits planifiés</td><td>${ci.circuits_planifies||0}</td></tr>
+            <tr><td>Nombre de circuits collectés</td><td>${ci.circuits_collectes||0}</td></tr>
+            <tr><td>Tonnage collecté</td><td>${ci.tonnage||0}</td></tr>
+            <tr><td>Nombre dépôts récurrents</td><td>${ci.depots_recurrents||0}</td></tr>
+            <tr><td>Dépôts récurrents levés</td><td>${ci.depots_recurrents_leves||0}</td></tr>
+            <tr><td>Nombre dépôts sauvages identifiés</td><td>${valOrNeant(ci.depots_sauvages_identifies)}</td></tr>
+            <tr><td>Nombre dépôts sauvages traités</td><td>${valOrNeant(ci.depots_sauvages_traites)}</td></tr>
+          </tbody></table>
+
+          <h3>3. SITUATION DE LA COLLECTE</h3>
+          <table><thead><tr><th>N°</th><th>Circuit</th><th>N° porte</th><th>Heure début</th><th>Heure fin</th><th>Durée</th><th>Poids</th><th>Observation</th></tr></thead>
+          <tbody>${circ.map((c,i)=>`<tr><td>${i+1}</td><td>${c.nom||''}</td><td>${c.numero_porte||''}</td><td>${c.heure_debut||''}</td><td>${c.heure_fin||''}</td><td>${c.duree||''}</td><td>${c.poids||''}</td><td>${c.observation||''}</td></tr>`).join('')}</tbody></table>
+
+          <h3>4. Collecte : Caisses Poly-benne</h3>
+          <table><thead><tr><th>Indicateurs</th><th>Valeur</th></tr></thead><tbody>
+            <tr><td>Nombre sites de caisse</td><td>${poly.sites_caisse||0}</td></tr>
+            <tr><td>Nombre de caisses</td><td>${poly.nb_caisses||0}</td></tr>
+            <tr><td>Nombre de caisses levées</td><td>${poly.nb_caisses_levees||0}</td></tr>
+            <tr><td>Poids collecté</td><td>${poly.poids_collecte||0}</td></tr>
+          </tbody></table>
+
+          <h3>5. Situation nettoiement</h3>
+          <table><thead><tr><th>Indicateurs</th><th>Valeur</th></tr></thead><tbody>
+            <tr><td>Nombre de circuits planifiés</td><td>${valOrNeant(net.circuits_planifies)}</td></tr>
+            <tr><td>Nombre de circuit balayés</td><td>${valOrNeant(net.circuits_balayes)}</td></tr>
+            <tr><td>Kilométrage planifié</td><td>${valOrNeant(net.km_planifie)}</td></tr>
+            <tr><td>Kilométrage balayé</td><td>${valOrNeant(net.km_balayes)}</td></tr>
+            <tr><td>Kilométrage désensablé</td><td>${valOrNeant(net.km_desensables)}</td></tr>
+          </tbody></table>
+
+          <h3>6. Mobilier urbain</h3>
+          <table><thead><tr><th>Libellé</th><th>Sites</th><th>Nombre de Bacs</th><th>Nombre Bacs Levés</th><th>Observation</th></tr></thead>
+          <tbody>${bacs.map(b=>`<tr><td>${b.libelle||''}</td><td>${b.sites||0}</td><td>${b.nb_bacs||0}</td><td>${b.nb_bacs_leves||0}</td><td>${b.observation||''}</td></tr>`).join('')}</tbody></table>
+
+          <h3>7.Interventions ponctuelles</h3>
+          <table><thead><tr><th>Indicateurs</th><th>Valeur</th></tr></thead><tbody>
+            <tr><td>Nombre d'agents mobilisés</td><td>${meq.nb_agents||0}</td></tr>
+            <tr><td>Nombre de pelles mécanique</td><td>${meq.nb_pelles_mecaniques||0}</td></tr>
+            <tr><td>Nombre de Tasseuses</td><td>${meq.nb_tasseuses||0}</td></tr>
+            <tr><td>Nombre de camions ciel ouvert</td><td>${meq.nb_camions_ouvert||0}</td></tr>
+            <tr><td>Sites d'intervention (Quartiers)</td><td>${valOrNeant(meq.sites_quartiers)}</td></tr>
+          </tbody></table>
+
+          <h3>8. Photos</h3>
+          ${photos.length? `<div class="photo-grid">${photos.map((p,i)=>`<figure><img src="${p}" alt="Photo ${i+1}" onerror="this.style.visibility='hidden'"/><figcaption>Photo ${i+1}</figcaption></figure>`).join('')}</div>` : '—'}
+
+          <h3>9. Difficultés</h3>
+          <div>${(diffs||[]).join(' ; ')||'—'}</div>
+
+          <h3>10. Recommandations</h3>
+          <div>${(recos||[]).join(' ; ')||'—'}</div>
+        `;
+      }
+
+      async function loadDetailed(){
+        const rid = (document.getElementById('reportIdInput').value||'').trim();
+        const box = document.getElementById('detailedPreview'); const dmsg = document.getElementById('dmsg');
+        if (!rid){ dmsg.textContent='Veuillez saisir un ID de rapport.'; return; }
+        dmsg.textContent='Chargement…'; box.innerHTML='';
+        try{
+          const r = await fetchJson(`${backend}/rapport_journalier/${encodeURIComponent(rid)}`);
+          box.innerHTML = htmlDetailed(r);
+          dmsg.textContent='';
+        }catch(e){ dmsg.textContent = 'Erreur: '+e.message; }
+      }
+
+      document.getElementById('previewDetailedBtn').addEventListener('click', loadDetailed);
+      document.getElementById('printDetailedBtn').addEventListener('click', ()=>{
+        const html = document.getElementById('detailedPreview').innerHTML;
+        if (!html){ alert('Aucun aperçu disponible.'); return; }
+        const w = window.open('', '_blank');
+        w.document.open(); w.document.write(`<html><head><meta charset='utf-8'><title>Rapport</title><style>table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px;font-size:12px}h3{margin:14px 0 6px}</style></head><body>${html}</body></html>`); w.document.close(); w.focus(); w.print();
+      });
+    </script>
+  </body>
+  </html>
+
+

@@ -23,7 +23,15 @@ async function verifyMatricule(){
   try{
     const res = await fetchJson(`${backend}/agents?matricule=${encodeURIComponent(m)}`);
     const ag = (res.items||[])[0];
-    if (ag){ agentId = ag.id; nameBox.value = ag.nom; btnCreate.disabled = false; }
+    if (ag){
+      agentId = ag.id;
+      nameBox.value = ag.nom;
+      // Renseigner automatiquement l'unité/commune selon la zone d'affectation de l'agent
+      const uniteField = document.getElementById('uniteInput');
+      const unitVal = ag.zone_affectation || ag.unite_commune || '';
+      if (uniteField && unitVal) uniteField.value = unitVal;
+      btnCreate.disabled = false;
+    }
   }catch(e){ agentId = null; nameBox.value=''; btnCreate.disabled = true; }
 }
 document.getElementById('checkMatBtn').addEventListener('click', verifyMatricule);
