@@ -189,7 +189,11 @@ function readTable(tableId, periode){
 document.getElementById('saveEffBtn').addEventListener('click', async ()=>{
   const msg = document.getElementById('effMsg'); msg.textContent='';
   if (!rid){ msg.textContent = 'Créez d\'abord le rapport'; return; }
-  const items = [ ...readTable('tabMatin','matin'), ...readTable('tabApres','apres_midi') ];
+  const items = [
+    ...readTable('tabMatin','matin'),
+    ...readTable('tabApres','apres_midi'),
+    ...readTable('tabNuit','nuit')
+  ];
   try{
     const res = await fetch(`${backend}/rapport_journalier/${rid}/effectifs`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ items }) });
     if (!res.ok) throw new Error(await res.text());

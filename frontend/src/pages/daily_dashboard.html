@@ -134,6 +134,7 @@
             <tbody>
               <tr><td>Matin</td><td id="effMtot">0</td><td id="effMpre">0</td><td id="effMabs">0</td><td id="effMmal">0</td><td id="effMcon">0</td><td id="effMren">0</td></tr>
               <tr><td>Après-midi</td><td id="effAtot">0</td><td id="effApre">0</td><td id="effAabs">0</td><td id="effAmal">0</td><td id="effAcon">0</td><td id="effAren">0</td></tr>
+              <tr><td>Nuit</td><td id="effNtot">0</td><td id="effNpre">0</td><td id="effNabs">0</td><td id="effNmal">0</td><td id="effNcon">0</td><td id="effNren">0</td></tr>
             </tbody>
           </table>
         </div>
@@ -256,6 +257,7 @@
         const eff = (per,key)=> reports.reduce((s,r)=> s + Number((r.effectifs?.[per]||{})[key]||0), 0);
         setText('effMtot', eff('matin','effectifs')); setText('effMpre', eff('matin','presents')); setText('effMabs', eff('matin','absents')); setText('effMmal', eff('matin','malades')); setText('effMcon', eff('matin','conges')); setText('effMren', eff('matin','renforts'));
         setText('effAtot', eff('apresmidi','effectifs')); setText('effApre', eff('apresmidi','presents')); setText('effAabs', eff('apresmidi','absents')); setText('effAmal', eff('apresmidi','malades')); setText('effAcon', eff('apresmidi','conges')); setText('effAren', eff('apresmidi','renforts'));
+        setText('effNtot', eff('nuit','effectifs')); setText('effNpre', eff('nuit','presents')); setText('effNabs', eff('nuit','absents')); setText('effNmal', eff('nuit','malades')); setText('effNcon', eff('nuit','conges')); setText('effNren', eff('nuit','renforts'));
 
         // Table circuits (statuts cumulés)
         const circuits = new Map();
@@ -318,13 +320,21 @@
           conges: Number(document.getElementById('effAcon').textContent)||0,
           retards: Number(document.getElementById('effAren').textContent)||0
         };
+        const n = {
+          effectifs: Number(document.getElementById('effNtot').textContent)||0,
+          presents: Number(document.getElementById('effNpre').textContent)||0,
+          absents: Number(document.getElementById('effNabs').textContent)||0,
+          malades: Number(document.getElementById('effNmal').textContent)||0,
+          conges: Number(document.getElementById('effNcon').textContent)||0,
+          retards: Number(document.getElementById('effNren').textContent)||0
+        };
         ensureChart('chartEffectifs', {
-          type:'bar', data:{ labels:['Matin','Après-midi'], datasets:[
-            { label:'Présents', data:[m.presents, a.presents], backgroundColor:'#16a34a', stack:'s' },
-            { label:'Absents', data:[m.absents, a.absents], backgroundColor:'#ef4444', stack:'s' },
-            { label:'Malades', data:[m.malades, a.malades], backgroundColor:'#f59e0b', stack:'s' },
-            { label:'Congés', data:[m.conges, a.conges], backgroundColor:'#60a5fa', stack:'s' },
-            { label:'Retards', data:[m.retards, a.retards], backgroundColor:'#8b5cf6', stack:'s' },
+          type:'bar', data:{ labels:['Matin','Après-midi','Nuit'], datasets:[
+            { label:'Présents', data:[m.presents, a.presents, n.presents], backgroundColor:'#16a34a', stack:'s' },
+            { label:'Absents', data:[m.absents, a.absents, n.absents], backgroundColor:'#ef4444', stack:'s' },
+            { label:'Malades', data:[m.malades, a.malades, n.malades], backgroundColor:'#f59e0b', stack:'s' },
+            { label:'Congés', data:[m.conges, a.conges, n.conges], backgroundColor:'#60a5fa', stack:'s' },
+            { label:'Retards', data:[m.retards, a.retards, n.retards], backgroundColor:'#8b5cf6', stack:'s' },
           ]}, options:{ responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
         });
 
