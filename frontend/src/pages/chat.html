@@ -271,16 +271,7 @@
       }
 
        function agentSelectorHtml() {
-         // build time options every 30 minutes
-         const times = [];
-         for (let h = 0; h < 24; h++) {
-           for (let m = 0; m < 60; m += 30) {
-             const hh = String(h).padStart(2,'0');
-             const mm = String(m).padStart(2,'0');
-             times.push(`${hh}:${mm}`);
-           }
-         }
-         const timeOptions = times.map(t => `<option value="${t}">${t}</option>`).join('');
+         // Champ heure identique à daily.html: input type time libre
          const parsedHour = (lastParsed && lastParsed.heure) ? lastParsed.heure.substring(0,5) : '';
         return `
           <div class="card">
@@ -295,10 +286,7 @@
             <hr style="margin:16px 0">
 
              <div style="font-weight: bold; margin-bottom: 8px;">🕒 Heure du rapport (optionnel)</div>
-             <select id="timeSelect">
-               <option value="">-- Sélectionner l'heure --</option>
-               ${timeOptions}
-             </select>
+             <input id="timeSelect" type="time" value="${parsedHour}" style="width:100%;padding:8px;">
              <div class="small">Par défaut: l'heure extraite du message si présente${parsedHour ? ` (détectée: ${parsedHour})` : ''}.</div>
              
              <hr style="margin:16px 0">
@@ -425,25 +413,31 @@
           reader.readAsDataURL(file);
         });
 
-        geoBtn.addEventListener('click', () => {
-          if (!navigator.geolocation) {
-            geoState.innerHTML = '<span style="color: #ef4444;">❌ Géolocalisation non disponible</span>';
-            return;
+        async function getPrecisePosition({targetAccuracy=25, maxWaitMs=15000}={}){
+          return new Promise((resolve, reject)=>{
+            if (!navigator.geolocation) return reject(new Error('Géolocalisation non disponible'));
+            let best = null; let watchId = null; let done = false;
+            const stop = ()=>{ if (watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId=null; } };
+            const timer = setTimeout(()=>{ done=true; stop(); best? resolve(best): reject(new Error('Timeout localisation')); }, maxWaitMs);
+            watchId = navigator.geolocation.watchPosition((pos)=>{
+              const acc = pos.coords.accuracy || Infinity; // mètres
+              if (!best || acc < (best.coords.accuracy||Infinity)) best = pos;
+              if (acc <= targetAccuracy && !done){ done=true; clearTimeout(timer); stop(); resolve(pos); }
+            }, (err)=>{ if (!done){ done=true; clearTimeout(timer); stop(); reject(err); } }, { enableHighAccuracy:true, maximumAge:0, timeout:maxWaitMs });
+          });
+        }
+
+        geoBtn.addEventListener('click', async () => {
+          geoState.innerHTML = '<span style="color: #3b82f6;">📍 Recherche d\'une position précise (≤25m)...</span>';
+          try{
+            const pos = await getPrecisePosition({ targetAccuracy:25, maxWaitMs:20000 });
+            geo.lat = pos.coords.latitude;
+            geo.lng = pos.coords.longitude;
+            const acc = Math.round(pos.coords.accuracy||0);
+            geoState.innerHTML = `<span style=\"color: #10b981;\">✅ Position ajoutée (${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}) • précision ~${acc}m</span>`;
+          }catch(err){
+            geoState.innerHTML = `<span style=\"color: #ef4444;\">❌ ${err.message}</span>`;
           }
-          
-          geoState.innerHTML = '<span style="color: #3b82f6;">📍 Obtention de la position...</span>';
-          
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              geo.lat = pos.coords.latitude;
-              geo.lng = pos.coords.longitude;
-              geoState.innerHTML = `<span style="color: #10b981;">✅ Position ajoutée (${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)})</span>`;
-            },
-            (err) => {
-              geoState.innerHTML = `<span style="color: #ef4444;">❌ ${err.message}</span>`;
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-          );
         });
       }
 
